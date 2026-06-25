@@ -30,6 +30,7 @@ defmodule AgentSea.Core.MixProject do
     [
       {:nimble_options, "~> 1.1"},
       {:jason, "~> 1.4"},
+      {:telemetry, "~> 1.0"},
       {:mox, "~> 1.1", only: :test}
     ]
   end

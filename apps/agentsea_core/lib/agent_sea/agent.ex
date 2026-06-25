@@ -91,7 +91,15 @@ defmodule AgentSea.Agent do
   def handle_call({:run, input, ctx}, _from, %{config: config, history: history} = state) do
     messages = system_messages(config) ++ history ++ [%{role: :user, content: input}]
 
-    case loop(messages, config, ctx, 0) do
+    meta = %{name: config.name, model: config.model}
+
+    result =
+      :telemetry.span([:agentsea, :agent, :run], meta, fn ->
+        r = loop(messages, config, ctx, 0)
+        {r, Map.merge(meta, run_stop_metadata(r))}
+      end)
+
+    case result do
       {:ok, response, final_messages} ->
         new_history = Enum.reject(final_messages, &(&1.role == :system))
         {:reply, {:ok, response}, %{state | history: new_history}}
@@ -116,7 +124,15 @@ defmodule AgentSea.Agent do
   end
 
   defp loop(messages, %Config{provider: {provider_mod, popts}} = config, ctx, iteration) do
-    case provider_mod.complete(messages, build_opts(config, popts)) do
+    meta = %{provider: provider_mod, model: config.model, name: config.name, iteration: iteration}
+
+    completion =
+      :telemetry.span([:agentsea, :provider, :complete], meta, fn ->
+        r = provider_mod.complete(messages, build_opts(config, popts))
+        {r, Map.merge(meta, provider_stop_metadata(r))}
+      end)
+
+    case completion do
       {:ok, %Response{tool_calls: tool_calls} = response}
       when tool_calls == [] or tool_calls == nil ->
         {:ok, response, messages ++ [assistant_message(response)]}
@@ -149,11 +165,22 @@ defmodule AgentSea.Agent do
     end)
   end
 
-  defp run_one_tool(%ToolCall{name: name, arguments: args}, %Config{tools: tools}, ctx) do
-    case find_tool(tools, name) do
-      nil -> {:error, {:unknown_tool, name}}
-      tool_mod -> tool_mod.run(args, ctx)
-    end
+  defp run_one_tool(
+         %ToolCall{name: name, arguments: args},
+         %Config{tools: tools, name: agent_name},
+         ctx
+       ) do
+    meta = %{tool: name, agent: agent_name}
+
+    :telemetry.span([:agentsea, :tool, :run], meta, fn ->
+      result =
+        case find_tool(tools, name) do
+          nil -> {:error, {:unknown_tool, name}}
+          tool_mod -> tool_mod.run(args, ctx)
+        end
+
+      {result, Map.put(meta, :outcome, elem(result, 0))}
+    end)
   end
 
   defp find_tool(tools, name), do: Enum.find(tools, fn mod -> mod.name() == name end)
@@ -264,4 +291,22 @@ defmodule AgentSea.Agent do
 
   defp contains_any?(string, substrings),
     do: Enum.any?(substrings, &String.contains?(string, &1))
+
+  # --- Telemetry stop metadata ---
+
+  defp run_stop_metadata({:ok, %Response{} = response, _messages}),
+    do: %{outcome: :ok, stop_reason: response.stop_reason}
+
+  defp run_stop_metadata({:error, reason}), do: %{outcome: :error, reason: reason}
+
+  defp provider_stop_metadata({:ok, %Response{} = response}) do
+    %{
+      outcome: :ok,
+      stop_reason: response.stop_reason,
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens
+    }
+  end
+
+  defp provider_stop_metadata({:error, reason}), do: %{outcome: :error, reason: reason}
 end

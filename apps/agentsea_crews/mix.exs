@@ -28,7 +28,8 @@ defmodule AgentSea.Crews.MixProject do
 
   defp deps do
     [
-      {:agentsea_core, in_umbrella: true}
+      {:agentsea_core, in_umbrella: true},
+      {:telemetry, "~> 1.0"}
     ]
   end
 end

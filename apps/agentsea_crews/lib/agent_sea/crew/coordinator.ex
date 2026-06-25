@@ -44,7 +44,8 @@ defmodule AgentSea.Crew.Coordinator do
       # Elixir Task ref -> crew task id, for in-flight work
       running: %{},
       rr_counter: 0,
-      caller: nil
+      caller: nil,
+      kickoff_started: nil
     }
 
     {:ok, state, {:continue, :start_agents}}
@@ -74,7 +75,15 @@ defmodule AgentSea.Crew.Coordinator do
   end
 
   def handle_call(:kickoff, from, %{status: :idle} = state) do
-    state = dispatch_ready(%{state | status: :running, caller: from})
+    :telemetry.execute(
+      [:agentsea, :crew, :kickoff, :start],
+      %{system_time: System.system_time()},
+      %{crew: state.spec.name, task_count: map_size(state.tasks)}
+    )
+
+    state =
+      %{state | status: :running, caller: from, kickoff_started: System.monotonic_time()}
+      |> dispatch_ready()
 
     if settled?(state) do
       complete(state)
@@ -98,9 +107,11 @@ defmodule AgentSea.Crew.Coordinator do
     state =
       case result do
         {:ok, response} ->
+          emit_task_stop(state, task_id, :ok)
           %{state | results: Map.put(state.results, task_id, response)}
 
         {:error, reason} ->
+          emit_task_stop(state, task_id, :error)
           %{state | failures: Map.put(state.failures, task_id, reason)}
       end
 
@@ -111,6 +122,7 @@ defmodule AgentSea.Crew.Coordinator do
   def handle_info({:DOWN, ref, :process, _pid, reason}, %{running: running} = state)
       when is_map_key(running, ref) do
     {task_id, running} = Map.pop(running, ref)
+    emit_task_stop(state, task_id, :crashed)
     state = %{state | failures: Map.put(state.failures, task_id, {:crashed, reason}), running: running}
     advance(state)
   end
@@ -153,6 +165,12 @@ defmodule AgentSea.Crew.Coordinator do
         agent = Enum.find(state.agents, &(&1.name == name))
         task_sup = Supervisor.via(state.spec.name, :task_sup)
 
+        :telemetry.execute(
+          [:agentsea, :crew, :task, :start],
+          %{system_time: System.system_time()},
+          %{crew: state.spec.name, task_id: task.id, agent: name}
+        )
+
         t =
           Task.Supervisor.async_nolink(task_sup, fn ->
             {:task_done, task.id, AgentSea.Agent.run(agent.pid, CrewTask.input(task))}
@@ -175,6 +193,15 @@ defmodule AgentSea.Crew.Coordinator do
       results: state.results,
       failures: state.failures
     }
+
+    duration =
+      if state.kickoff_started, do: System.monotonic_time() - state.kickoff_started, else: 0
+
+    :telemetry.execute(
+      [:agentsea, :crew, :kickoff, :stop],
+      %{duration: duration},
+      %{crew: state.spec.name, success: result.success, task_count: map_size(state.tasks)}
+    )
 
     if state.caller, do: GenServer.reply(state.caller, {:ok, result})
     {:noreply, %{state | status: :completed, caller: nil}}
@@ -203,4 +230,12 @@ defmodule AgentSea.Crew.Coordinator do
 
   defp put_failure(state, id, reason),
     do: %{state | failures: Map.put(state.failures, id, reason)}
+
+  defp emit_task_stop(state, task_id, outcome) do
+    :telemetry.execute(
+      [:agentsea, :crew, :task, :stop],
+      %{system_time: System.system_time()},
+      %{crew: state.spec.name, task_id: task_id, outcome: outcome}
+    )
+  end
 end
