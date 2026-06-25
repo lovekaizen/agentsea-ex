@@ -22,6 +22,17 @@ defmodule AgentSea.MCP do
   end
 
   @doc """
+  Connect to an MCP server subprocess over stdio. `command` is `[executable |
+  args]` (e.g. `["node", "server.js"]`). Returns `{:ok, client}`.
+  """
+  @spec connect_stdio([String.t()], keyword()) :: {:ok, pid()} | {:error, term()}
+  def connect_stdio(command, opts \\ []) do
+    with {:ok, transport} <- AgentSea.MCP.Transport.Stdio.start_link(command: command) do
+      connect({AgentSea.MCP.Transport.Stdio, transport}, opts)
+    end
+  end
+
+  @doc """
   Adapt the server's tools into `AgentSea.Tool.Spec` values an agent can use.
   Each spec's `run` calls the tool through the client.
   """
