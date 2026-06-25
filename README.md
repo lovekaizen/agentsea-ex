@@ -29,7 +29,7 @@ An umbrella of independently-releasable `agentsea_*` apps (`core`, `providers`, 
 3. **Observability** ✅ — Telemetry instrumentation across provider/agent/tool/crew (`AgentSea.Telemetry`) plus a Phoenix LiveView dashboard (`agentsea_web`) that renders live fleet activity from those events.
 4. **Gateway** ✅ — strategy-based routing (failover, round-robin, cost-, latency-optimized), `:fuse` circuit breaking, failover, and health tracking (`agentsea_gateway`), plus an OpenAI-compatible `POST /v1/chat/completions` endpoint with **real token streaming** — provider `stream/2` events forwarded straight through as SSE chunks (`agentsea_web`).
 5. **Data plane** 🚧 — Ecto-changeset structured output (`agentsea_structured`); an embeddings/vector-search stack with a RAG retrieval tool (`agentsea_embeddings`); a Broadway document ingestion pipeline (`agentsea_ingest`); and concurrent evaluation with exact-match/contains/LLM-as-judge metrics + aggregation (`agentsea_evaluate`). Bumblebee/pgvector adapters next.
-6. **Bridges** 🚧 — an MCP client + stdio transport (`agentsea_mcp`) and a surf Node sidecar — a supervised `Port` to a Node/Playwright subprocess (newline-JSON, id-correlated), with browser actions exposed as agent tools (`agentsea_surf`) — are done; a streamable-HTTP MCP transport and voice next.
+6. **Bridges** ✅ — an MCP client + stdio transport (`agentsea_mcp`); a surf Node sidecar with browser actions as agent tools (`agentsea_surf`); and voice — `TTS`/`STT` behaviours + an OpenAI adapter over Req (`agentsea_voice`). A streamable-HTTP MCP transport and local (Bumblebee) adapters remain as refinements.
 
 ## License
 
