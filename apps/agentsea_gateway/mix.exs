@@ -18,7 +18,7 @@ defmodule AgentSea.Gateway.MixProject do
         "AgentSea gateway: strategy-based routing, circuit breaking, and failover across LLM providers.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

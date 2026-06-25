@@ -17,7 +17,7 @@ defmodule AgentSea.Bumblebee.MixProject do
         "AgentSea Bumblebee: in-process Hugging Face embeddings and Whisper speech-to-text via Bumblebee and Nx.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

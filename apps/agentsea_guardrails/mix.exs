@@ -17,7 +17,7 @@ defmodule AgentSea.Guardrails.MixProject do
         "AgentSea guardrails: an input/output validation pipeline with rule-based and LLM moderation guardrails.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

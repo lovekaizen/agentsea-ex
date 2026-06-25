@@ -17,7 +17,7 @@ defmodule AgentSea.Providers.MixProject do
         "AgentSea LLM providers: Anthropic over Req, with non-streaming and real SSE streaming.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

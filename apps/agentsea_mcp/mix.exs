@@ -17,7 +17,7 @@ defmodule AgentSea.MCP.MixProject do
         "AgentSea MCP: a Model Context Protocol client with stdio and streamable-HTTP transports.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

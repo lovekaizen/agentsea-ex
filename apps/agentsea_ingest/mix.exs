@@ -17,7 +17,7 @@ defmodule AgentSea.Ingest.MixProject do
         "AgentSea ingest: a Broadway document ingestion pipeline (chunk, embed, store).",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

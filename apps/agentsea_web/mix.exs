@@ -18,7 +18,7 @@ defmodule AgentSea.Web.MixProject do
         "AgentSea web: a Phoenix LiveView fleet dashboard and an OpenAI-compatible chat completions endpoint.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

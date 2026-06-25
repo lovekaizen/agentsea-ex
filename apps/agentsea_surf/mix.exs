@@ -17,7 +17,7 @@ defmodule AgentSea.Surf.MixProject do
         "AgentSea surf: a Node/Playwright browser-automation sidecar exposed as agent tools.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

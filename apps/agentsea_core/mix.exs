@@ -16,7 +16,7 @@ defmodule AgentSea.Core.MixProject do
         "AgentSea core: the agent GenServer, the agentic run loop, and the Provider/Tool/Memory behaviours.",
       package: [
         licenses: ["Apache-2.0"],
-        maintainers: ["Michael Bello"],
+        maintainers: ["lovekaizen"],
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()

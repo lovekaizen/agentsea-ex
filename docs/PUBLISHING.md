@@ -4,13 +4,14 @@ AgentSea is an umbrella, and **Hex publishes each `apps/*` app as its own
 package** — there is no "umbrella package". This guide covers the metadata,
 the umbrella-specific dependency wrinkle, the publish order, and the commands.
 
-All 14 apps already carry the package metadata they need (`description`,
-`licenses`, `maintainers`, `links`); see any `apps/*/mix.exs`.
+All 14 apps already carry the package metadata they need: `description`,
+`licenses: ["Apache-2.0"]`, `maintainers: ["lovekaizen"]`, `links` (GitHub), and
+a `CHANGELOG.md` (Hex bundles it automatically and shows it on the package page).
+See any `apps/*/mix.exs`.
 
-> **Confirm before your first publish:** the license (`Apache-2.0`), the
-> maintainer (`Michael Bello`), and the GitHub URL
-> (`https://github.com/lovekaizen/agentsea-ex`) are set in every
-> `apps/*/mix.exs` and in `hex_deps.exs`. Edit them if any are wrong.
+> **One thing to confirm before your first publish:** the GitHub URL
+> (`https://github.com/lovekaizen/agentsea-ex`) in every `apps/*/mix.exs`. The
+> license (Apache-2.0) and maintainer (lovekaizen) are set.
 
 ## 1. Prerequisites
 
@@ -58,27 +59,27 @@ requires already exist on Hex. The tiers (from the sibling graph):
 3. **→ tier 2:** `agentsea_ingest` (→ embeddings),
    `agentsea_web` (→ core, gateway), `agentsea_bumblebee` (→ embeddings, voice)
 
-## 4. Publish each app
+## 4. Publish
 
-From the app directory, with `HEX_PUBLISH=1`:
+The repo ships a one-shot script that publishes all apps in the right order,
+setting `HEX_PUBLISH=1` for you:
+
+```bash
+scripts/publish.sh --dry-run   # build every package without publishing (verify)
+scripts/publish.sh             # publish all, prompting to confirm each
+scripts/publish.sh --yes       # publish all, no per-app prompt
+```
+
+It stops on the first failure, so a partial run is safe to re-run (already-
+published packages will fail fast on a re-publish; resume from the next app, or
+bump the version).
+
+To do a single app by hand instead:
 
 ```bash
 cd apps/agentsea_core
-HEX_PUBLISH=1 mix hex.publish      # publishes the package AND its docs (see §5)
-```
-
-`mix hex.publish` shows the file list, deps, and metadata, then asks to confirm.
-To publish just the package (no docs): `HEX_PUBLISH=1 mix hex.publish package`.
-
-A convenience loop for the whole umbrella (review each prompt!):
-
-```bash
-for app in agentsea_core agentsea_voice \
-           agentsea_crews agentsea_embeddings agentsea_evaluate agentsea_gateway \
-           agentsea_guardrails agentsea_mcp agentsea_providers agentsea_structured agentsea_surf \
-           agentsea_ingest agentsea_web agentsea_bumblebee; do
-  (cd "apps/$app" && HEX_PUBLISH=1 mix hex.publish)
-done
+HEX_PUBLISH=1 mix hex.publish            # package + docs
+HEX_PUBLISH=1 mix hex.publish package    # package only (no docs)
 ```
 
 ## 5. Docs on HexDocs
@@ -105,7 +106,8 @@ package's `links`.
 ## Checklist
 
 - [ ] `mix test` green; `mix format --check-formatted`; `mix credo`; `mix dialyzer`
-- [ ] License / maintainer / GitHub URL confirmed in every `apps/*/mix.exs`
+- [ ] GitHub URL confirmed in every `apps/*/mix.exs` (license + maintainer are set)
+- [ ] `CHANGELOG.md` updated (date the `0.1.0` entry on release)
 - [ ] `mix hex.user auth` done; you own each package name
-- [ ] `HEX_PUBLISH=1 mix hex.build` succeeds in each app
-- [ ] Published in dependency order (tier 1 → 2 → 3)
+- [ ] `scripts/publish.sh --dry-run` passes
+- [ ] `scripts/publish.sh` (publishes in dependency order)
