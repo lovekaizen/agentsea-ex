@@ -11,6 +11,13 @@ defmodule AgentSea.Voice.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea voice: text-to-speech and speech-to-text behaviours with OpenAI and ElevenLabs adapters.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end

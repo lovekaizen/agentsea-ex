@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Embeddings.MixProject do
   use Mix.Project
 
@@ -12,6 +14,13 @@ defmodule AgentSea.Embeddings.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea embeddings: embedder/vector-store behaviours, RAG, and in-memory/pgvector/Qdrant/Pinecone stores.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -30,7 +39,7 @@ defmodule AgentSea.Embeddings.MixProject do
     # for the retrieval tool, postgrex/jason for the pgvector store, and req for
     # the Qdrant store. Bumblebee is a drop-in embedder (see agentsea_bumblebee).
     [
-      {:agentsea_core, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_core),
       {:postgrex, "~> 0.17"},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"},

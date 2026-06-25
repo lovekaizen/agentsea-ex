@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Evaluate.MixProject do
   use Mix.Project
 
@@ -11,6 +13,13 @@ defmodule AgentSea.Evaluate.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea evaluate: concurrent evaluation metrics, including an LLM-as-judge metric.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -23,7 +32,7 @@ defmodule AgentSea.Evaluate.MixProject do
 
   defp deps do
     [
-      {:agentsea_core, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_core),
       {:mox, "~> 1.1", only: :test}
     ]
   end

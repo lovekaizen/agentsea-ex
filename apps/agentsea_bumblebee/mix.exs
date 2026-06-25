@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Bumblebee.MixProject do
   use Mix.Project
 
@@ -11,6 +13,13 @@ defmodule AgentSea.Bumblebee.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea Bumblebee: in-process Hugging Face embeddings and Whisper speech-to-text via Bumblebee and Nx.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -21,8 +30,8 @@ defmodule AgentSea.Bumblebee.MixProject do
 
   defp deps do
     [
-      {:agentsea_embeddings, in_umbrella: true},
-      {:agentsea_voice, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_embeddings),
+      AgentSea.HexDeps.sibling(:agentsea_voice),
       {:bumblebee, "~> 0.6"},
       {:nx, "~> 0.9"}
     ]

@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Gateway.MixProject do
   use Mix.Project
 
@@ -12,6 +14,13 @@ defmodule AgentSea.Gateway.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea gateway: strategy-based routing, circuit breaking, and failover across LLM providers.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -27,7 +36,7 @@ defmodule AgentSea.Gateway.MixProject do
 
   defp deps do
     [
-      {:agentsea_core, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_core),
       {:fuse, "~> 2.5"},
       {:telemetry, "~> 1.0"}
     ]

@@ -13,8 +13,9 @@ erl_crash.dump
 *.plt
 *.plt.hash
 
-# Generated when building a release
+# Generated when building a release / hex package
 /agentsea-*.tar
+apps/*/*.tar
 
 # App config secrets
 /config/*.secret.exs

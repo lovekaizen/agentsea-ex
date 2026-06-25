@@ -67,6 +67,13 @@ mix docs                          # aggregated HTML docs across all apps -> doc/
 
 Heavyweight or service-dependent tests are tagged and **excluded by default**, so the standard suite stays fast and hermetic; CI runs that suite plus the format, warnings-as-errors, Credo, and Dialyzer gates.
 
+## Publishing
+
+Each `apps/*` app publishes to Hex as its own package. See
+[docs/PUBLISHING.md](docs/PUBLISHING.md) for the metadata, the umbrella
+sibling-dependency mechanism (`HEX_PUBLISH=1`), the publish order, and the
+commands.
+
 ## License
 
-TBD
+[Apache-2.0](LICENSE).

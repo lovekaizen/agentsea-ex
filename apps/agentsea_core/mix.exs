@@ -12,6 +12,13 @@ defmodule AgentSea.Core.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea core: the agent GenServer, the agentic run loop, and the Provider/Tool/Memory behaviours.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end

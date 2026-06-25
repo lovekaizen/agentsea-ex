@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Structured.MixProject do
   use Mix.Project
 
@@ -12,6 +14,13 @@ defmodule AgentSea.Structured.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea structured output: extract validated Ecto structs from an LLM, with validation retry.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -27,7 +36,7 @@ defmodule AgentSea.Structured.MixProject do
 
   defp deps do
     [
-      {:agentsea_core, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_core),
       # Pinned to the 3.12 line (decimal ~> 2.0) so it co-resolves with bumblebee,
       # whose progress_bar requires decimal ~> 2.0. Ecto 3.13+ moved to decimal 3.0.
       {:ecto, "~> 3.12.0"},

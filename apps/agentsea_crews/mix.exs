@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Crews.MixProject do
   use Mix.Project
 
@@ -12,6 +14,13 @@ defmodule AgentSea.Crews.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea crews: multi-agent coordination with delegation strategies and a gen_statem task-DAG coordinator.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -28,7 +37,7 @@ defmodule AgentSea.Crews.MixProject do
 
   defp deps do
     [
-      {:agentsea_core, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_core),
       {:telemetry, "~> 1.0"}
     ]
   end

@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Ingest.MixProject do
   use Mix.Project
 
@@ -11,6 +13,13 @@ defmodule AgentSea.Ingest.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea ingest: a Broadway document ingestion pipeline (chunk, embed, store).",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -23,7 +32,7 @@ defmodule AgentSea.Ingest.MixProject do
 
   defp deps do
     [
-      {:agentsea_embeddings, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_embeddings),
       {:broadway, "~> 1.0"}
     ]
   end

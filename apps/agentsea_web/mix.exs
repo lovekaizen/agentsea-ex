@@ -1,3 +1,5 @@
+Code.require_file("../../hex_deps.exs", __DIR__)
+
 defmodule AgentSea.Web.MixProject do
   use Mix.Project
 
@@ -12,6 +14,13 @@ defmodule AgentSea.Web.MixProject do
       elixir: "~> 1.14",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
+      description:
+        "AgentSea web: a Phoenix LiveView fleet dashboard and an OpenAI-compatible chat completions endpoint.",
+      package: [
+        licenses: ["Apache-2.0"],
+        maintainers: ["Michael Bello"],
+        links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
+      ],
       deps: deps()
     ]
   end
@@ -28,8 +37,8 @@ defmodule AgentSea.Web.MixProject do
 
   defp deps do
     [
-      {:agentsea_core, in_umbrella: true},
-      {:agentsea_gateway, in_umbrella: true},
+      AgentSea.HexDeps.sibling(:agentsea_core),
+      AgentSea.HexDeps.sibling(:agentsea_gateway),
       {:phoenix, "~> 1.7.14"},
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_pubsub, "~> 2.1"},
