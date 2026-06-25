@@ -29,6 +29,7 @@ defmodule AgentSea.Web.MixProject do
   defp deps do
     [
       {:agentsea_core, in_umbrella: true},
+      {:agentsea_gateway, in_umbrella: true},
       {:phoenix, "~> 1.7.14"},
       {:phoenix_live_view, "~> 1.0"},
       {:phoenix_pubsub, "~> 2.1"},

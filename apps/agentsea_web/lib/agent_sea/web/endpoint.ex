@@ -11,6 +11,11 @@ defmodule AgentSea.Web.Endpoint do
   socket "/live", Phoenix.LiveView.Socket,
     websocket: [connect_info: [session: @session_options]]
 
+  plug Plug.Parsers,
+    parsers: [:urlencoded, :json],
+    pass: ["*/*"],
+    json_decoder: Jason
+
   plug Plug.Session, @session_options
   plug AgentSea.Web.Router
 end
