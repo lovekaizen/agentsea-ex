@@ -10,6 +10,7 @@ defmodule AgentSea.Embeddings.MixProject do
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
+      elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps()
     ]
@@ -21,9 +22,16 @@ defmodule AgentSea.Embeddings.MixProject do
     ]
   end
 
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(_), do: ["lib"]
+
   defp deps do
-    # Dependency-free by design: the in-memory store + hashing embedder need
-    # nothing extra. Bumblebee/Nx and pgvector are future drop-in adapters.
-    []
+    # The store + hashing embedder are dependency-free; core is needed only for
+    # the optional retrieval tool (the AgentSea.Tool behaviour). Bumblebee/Nx
+    # and pgvector are future drop-in adapters.
+    [
+      {:agentsea_core, in_umbrella: true},
+      {:mox, "~> 1.1", only: :test}
+    ]
   end
 end
