@@ -23,6 +23,8 @@ defmodule AgentSea.Telemetry do
         measurements `%{duration}`
     * `[:agentsea, :crew, :task, :start | :stop]` — one crew task
       * metadata: `%{crew, task_id, agent}`; `:stop` carries `%{crew, task_id, outcome}`
+    * `[:agentsea, :gateway, :route, :stop]` — a gateway routing decision
+      * metadata: `%{provider, outcome}`; measurements `%{attempts, latency_ms}`
   """
 
   require Logger
@@ -35,7 +37,8 @@ defmodule AgentSea.Telemetry do
 
   @discrete [
     [:agentsea, :crew, :kickoff],
-    [:agentsea, :crew, :task]
+    [:agentsea, :crew, :task],
+    [:agentsea, :gateway, :route]
   ]
 
   @doc "Every event name AgentSea may emit."

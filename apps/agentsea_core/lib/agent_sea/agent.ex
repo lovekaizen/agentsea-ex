@@ -260,7 +260,7 @@ defmodule AgentSea.Agent do
       task_id: Map.get(task, :id),
       confidence: confidence,
       estimated_time: estimated_time,
-      estimated_cost: model_cost_weight(config.model) * estimated_time,
+      estimated_cost: AgentSea.ModelPricing.weight(config.model) * estimated_time,
       capabilities: match.matched,
       reasoning:
         "matched #{length(match.matched)} capabilit(ies); #{length(match.missing)} missing"
@@ -275,22 +275,6 @@ defmodule AgentSea.Agent do
     description = Map.get(task, :description, "") || ""
     1000 + div(String.length(description), 100) * 500
   end
-
-  # Coarse relative price tiers (not exact pricing) so the auction can prefer
-  # cheaper models. Higher = pricier.
-  defp model_cost_weight(model) do
-    m = String.downcase(model || "")
-
-    cond do
-      contains_any?(m, ["opus", "gpt-5", "o3"]) -> 5.0
-      contains_any?(m, ["sonnet", "gpt-4"]) -> 3.0
-      contains_any?(m, ["haiku", "mini", "flash", "llama", "mistral"]) -> 1.0
-      true -> 3.0
-    end
-  end
-
-  defp contains_any?(string, substrings),
-    do: Enum.any?(substrings, &String.contains?(string, &1))
 
   # --- Telemetry stop metadata ---
 
