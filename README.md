@@ -2,7 +2,15 @@
 
 An idiomatic Elixir/OTP rewrite of the [AgentSea](https://github.com/lovekaizen/agentsea) agentic ADK — **not** a port of the TypeScript SDK.
 
-> **Status: Design / RFC.** No code yet — see [docs/DESIGN.md](docs/DESIGN.md) for the full plan.
+> **Status: Phase 1 in progress.** The core loop is implemented and tested — see [docs/DESIGN.md](docs/DESIGN.md) for the full plan.
+
+## Getting started
+
+```bash
+asdf install            # Erlang/OTP 25 + Elixir 1.18 (see .tool-versions)
+mix deps.get
+mix test
+```
 
 ## Thesis
 
@@ -16,7 +24,7 @@ An umbrella of independently-releasable `agentsea_*` apps (`core`, `providers`, 
 
 ## Roadmap
 
-1. **Core loop** — Agent GenServer + Provider/Tool/Memory behaviours + Anthropic/OpenAI (Req streaming).
+1. **Core loop** ✅ — Agent GenServer + Provider/Tool/Memory behaviours + Anthropic provider (Req), buffer memory, concurrent + crash-isolated tool execution. (`agentsea_core`, `agentsea_providers`)
 2. **Crews** — DynamicSupervisor + `gen_statem` coordinator + auction-as-fan-out.
 3. **Observability** — Phoenix LiveView + Telemetry (live fleet, token streaming, checkpoint replay).
 4. **Gateway** — Finch pools + `:fuse` + router + OpenAI-compatible endpoint.
