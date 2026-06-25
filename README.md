@@ -28,7 +28,7 @@ An umbrella of independently-releasable `agentsea_*` apps (`core`, `providers`, 
 2. **Crews** ✅ — capabilities/roles, delegation strategies (round-robin, best-match, auction-as-fan-out), bidding, and a supervised coordinator that runs a task DAG (parallel where possible, dependency-aware) (`agentsea_crews`). Pause/resume/abort + `gen_statem` migration still to come.
 3. **Observability** ✅ — Telemetry instrumentation across provider/agent/tool/crew (`AgentSea.Telemetry`) plus a Phoenix LiveView dashboard (`agentsea_web`) that renders live fleet activity from those events.
 4. **Gateway** ✅ — strategy-based routing (failover, round-robin, cost-, latency-optimized), `:fuse` circuit breaking, failover, and health tracking (`agentsea_gateway`), plus an OpenAI-compatible `POST /v1/chat/completions` endpoint with SSE streaming (`agentsea_web`).
-5. **Data plane** 🚧 — Ecto-changeset structured output with a validation-retry loop is done (`agentsea_structured`); Bumblebee embeddings, pgvector memory, and Broadway ingest/evaluate next.
+5. **Data plane** 🚧 — Ecto-changeset structured output (`agentsea_structured`) and an embeddings/vector-search stack — `Embedder`/`VectorStore` behaviours, a dependency-free hashing embedder, and an in-memory cosine store (`agentsea_embeddings`) — are done; Bumblebee/pgvector adapters and Broadway ingest/evaluate next.
 6. **Bridges** — MCP (Hermes/native), surf Node sidecar via Port, voice.
 
 ## License
