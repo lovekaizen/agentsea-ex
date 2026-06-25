@@ -38,7 +38,7 @@ An umbrella of independently-releasable `agentsea_*` apps. Each owns one concern
 | `agentsea_evaluate` | concurrent metrics (exact-match, contains, LLM-as-judge) + aggregation |
 | `agentsea_mcp` | MCP client with **stdio** and **streamable-HTTP** transports; server tools adapted into agent `Tool.Spec`s |
 | `agentsea_surf` | Node/Playwright browser sidecar over a `Port`, exposed as agent tools |
-| `agentsea_voice` | `TTS`/`STT` behaviours + an OpenAI adapter over `Req` |
+| `agentsea_voice` | `TTS`/`STT` behaviours + OpenAI (TTS+STT) and ElevenLabs (TTS) adapters over `Req` |
 
 ## Roadmap (all delivered)
 
