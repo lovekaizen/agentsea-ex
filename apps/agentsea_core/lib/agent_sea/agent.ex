@@ -26,6 +26,7 @@ defmodule AgentSea.Agent do
       # {provider_module, provider_opts}
       :provider,
       :system_prompt,
+      :role,
       tools: [],
       temperature: nil,
       max_tokens: nil,
@@ -41,6 +42,7 @@ defmodule AgentSea.Agent do
             model: String.t(),
             provider: {module(), keyword()},
             system_prompt: String.t() | nil,
+            role: AgentSea.Role.t() | nil,
             tools: [module()],
             temperature: float() | nil,
             max_tokens: pos_integer() | nil,
@@ -63,6 +65,14 @@ defmodule AgentSea.Agent do
   def run(agent, input, ctx \\ %{}) when is_binary(input) do
     GenServer.call(agent, {:run, input, ctx}, :infinity)
   end
+
+  @doc """
+  Produce a bid for a task, based on the agent's role/capabilities and model
+  price tier. Pure (no provider call) — used by the auction delegation strategy.
+  The `task` may be any map/struct exposing `:id`, `:description` and
+  `:required_capabilities`.
+  """
+  def bid(agent, task), do: GenServer.call(agent, {:bid, task})
 
   @doc "Return the accumulated conversation history (excludes the system prompt)."
   def history(agent), do: GenServer.call(agent, :history)
@@ -89,6 +99,10 @@ defmodule AgentSea.Agent do
       {:error, _reason} = error ->
         {:reply, error, state}
     end
+  end
+
+  def handle_call({:bid, task}, _from, %{config: config} = state) do
+    {:reply, {:ok, compute_bid(config, task)}, state}
   end
 
   def handle_call(:history, _from, state), do: {:reply, state.history, state}
@@ -146,8 +160,21 @@ defmodule AgentSea.Agent do
 
   # --- Message helpers ---
 
-  defp system_messages(%Config{system_prompt: nil}), do: []
-  defp system_messages(%Config{system_prompt: prompt}), do: [%{role: :system, content: prompt}]
+  defp system_messages(%Config{} = config) do
+    case effective_system_prompt(config) do
+      nil -> []
+      prompt -> [%{role: :system, content: prompt}]
+    end
+  end
+
+  # An explicit system_prompt wins; otherwise fall back to the role's prompt.
+  defp effective_system_prompt(%Config{system_prompt: sp}) when is_binary(sp), do: sp
+
+  defp effective_system_prompt(%Config{role: %AgentSea.Role{system_prompt: sp}})
+       when is_binary(sp),
+       do: sp
+
+  defp effective_system_prompt(_), do: nil
 
   defp assistant_message(%Response{content: content, tool_calls: tool_calls}) do
     %{role: :assistant, content: content, tool_calls: tool_calls || []}
@@ -190,4 +217,51 @@ defmodule AgentSea.Agent do
   defp put_opt(opts, _key, nil), do: opts
   defp put_opt(opts, _key, []), do: opts
   defp put_opt(opts, key, value), do: Keyword.put(opts, key, value)
+
+  # --- Bidding (auction delegation) ---
+
+  defp compute_bid(%Config{} = config, task) do
+    required = Map.get(task, :required_capabilities, [])
+    match = AgentSea.Capability.match(role_capabilities(config), required)
+
+    # Reduce confidence when the agent is missing required capabilities.
+    confidence = if match.can_execute, do: match.score, else: match.score * 0.5
+    estimated_time = estimate_time(task)
+
+    %AgentSea.Bid{
+      agent_name: config.name,
+      task_id: Map.get(task, :id),
+      confidence: confidence,
+      estimated_time: estimated_time,
+      estimated_cost: model_cost_weight(config.model) * estimated_time,
+      capabilities: match.matched,
+      reasoning:
+        "matched #{length(match.matched)} capabilit(ies); #{length(match.missing)} missing"
+    }
+  end
+
+  defp role_capabilities(%Config{role: %AgentSea.Role{capabilities: caps}}), do: caps
+  defp role_capabilities(_), do: []
+
+  # Crude effort estimate (ms) from task description length.
+  defp estimate_time(task) do
+    description = Map.get(task, :description, "") || ""
+    1000 + div(String.length(description), 100) * 500
+  end
+
+  # Coarse relative price tiers (not exact pricing) so the auction can prefer
+  # cheaper models. Higher = pricier.
+  defp model_cost_weight(model) do
+    m = String.downcase(model || "")
+
+    cond do
+      contains_any?(m, ["opus", "gpt-5", "o3"]) -> 5.0
+      contains_any?(m, ["sonnet", "gpt-4"]) -> 3.0
+      contains_any?(m, ["haiku", "mini", "flash", "llama", "mistral"]) -> 1.0
+      true -> 3.0
+    end
+  end
+
+  defp contains_any?(string, substrings),
+    do: Enum.any?(substrings, &String.contains?(string, &1))
 end
