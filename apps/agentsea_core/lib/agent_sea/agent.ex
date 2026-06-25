@@ -31,10 +31,18 @@ defmodule AgentSea.Agent do
       temperature: nil,
       max_tokens: nil,
       max_iterations: 10,
+      # Optional guardrail hooks: a 1-arity fun applied to the user input before
+      # the loop / to the final answer before returning. Each returns
+      # `{:ok, content}` (possibly rewritten) or `{:block, reason}`. This is
+      # exactly `AgentSea.Guardrails.run/2` partially applied.
+      input_guard: nil,
+      output_guard: nil,
       # Claude-specific, passed through to the provider:
       thinking: nil,
       effort: nil
     ]
+
+    @type guard :: (String.t() -> {:ok, String.t()} | {:block, term()})
 
     @type t :: %__MODULE__{
             name: atom() | String.t(),
@@ -47,6 +55,8 @@ defmodule AgentSea.Agent do
             temperature: float() | nil,
             max_tokens: pos_integer() | nil,
             max_iterations: pos_integer(),
+            input_guard: guard() | nil,
+            output_guard: guard() | nil,
             thinking: term(),
             effort: atom() | nil
           }
@@ -89,23 +99,15 @@ defmodule AgentSea.Agent do
 
   @impl GenServer
   def handle_call({:run, input, ctx}, _from, %{config: config, history: history} = state) do
-    messages = system_messages(config) ++ history ++ [%{role: :user, content: input}]
-
-    meta = %{name: config.name, model: config.model}
-
-    result =
-      :telemetry.span([:agentsea, :agent, :run], meta, fn ->
-        r = loop(messages, config, ctx, 0)
-        {r, Map.merge(meta, run_stop_metadata(r))}
-      end)
-
-    case result do
-      {:ok, response, final_messages} ->
-        new_history = Enum.reject(final_messages, &(&1.role == :system))
-        {:reply, {:ok, response}, %{state | history: new_history}}
-
-      {:error, _reason} = error ->
-        {:reply, error, state}
+    with {:ok, guarded_input} <- guard(config.input_guard, input, :input),
+         messages =
+           system_messages(config) ++ history ++ [%{role: :user, content: guarded_input}],
+         {:ok, response, final_messages} <- run_loop(messages, config, ctx),
+         {:ok, content} <- guard(config.output_guard, response.content, :output) do
+      new_history = Enum.reject(final_messages, &(&1.role == :system))
+      {:reply, {:ok, %{response | content: content}}, %{state | history: new_history}}
+    else
+      {:error, _reason} = error -> {:reply, error, state}
     end
   end
 
@@ -116,7 +118,27 @@ defmodule AgentSea.Agent do
   def handle_call(:history, _from, state), do: {:reply, state.history, state}
   def handle_call(:reset, _from, state), do: {:reply, :ok, %{state | history: []}}
 
+  # --- Guardrail hooks ---
+
+  defp guard(nil, content, _stage), do: {:ok, content}
+
+  defp guard(fun, content, stage) when is_function(fun, 1) do
+    case fun.(content) do
+      {:ok, guarded} -> {:ok, guarded}
+      {:block, reason} -> {:error, {:guardrail, stage, reason}}
+    end
+  end
+
   # --- The agentic loop ---
+
+  defp run_loop(messages, config, ctx) do
+    meta = %{name: config.name, model: config.model}
+
+    :telemetry.span([:agentsea, :agent, :run], meta, fn ->
+      result = loop(messages, config, ctx, 0)
+      {result, Map.merge(meta, run_stop_metadata(result))}
+    end)
+  end
 
   defp loop(messages, %Config{max_iterations: max}, _ctx, iteration)
        when iteration >= max do

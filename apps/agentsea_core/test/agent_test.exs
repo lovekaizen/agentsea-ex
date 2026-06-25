@@ -139,4 +139,47 @@ defmodule AgentSea.AgentTest do
     assert :ok = Agent.reset(agent)
     assert Agent.history(agent) == []
   end
+
+  describe "guardrail hooks" do
+    test "input_guard can block before the provider is called" do
+      # No provider expectation: a blocked input must short-circuit.
+      block = fn input -> if input =~ "secret", do: {:block, :forbidden}, else: {:ok, input} end
+      agent = start_agent(input_guard: block)
+
+      assert {:error, {:guardrail, :input, :forbidden}} = Agent.run(agent, "tell me the secret")
+    end
+
+    test "input_guard can rewrite the input the provider sees" do
+      expect(AgentSea.MockProvider, :complete, fn messages, _opts ->
+        user = Enum.find(messages, &(&1.role == :user))
+        assert user.content == "hello [REDACTED]"
+        {:ok, %Response{content: "ok"}}
+      end)
+
+      redact = fn input -> {:ok, String.replace(input, "alice", "[REDACTED]")} end
+      agent = start_agent(input_guard: redact)
+
+      assert {:ok, %Response{content: "ok"}} = Agent.run(agent, "hello alice")
+    end
+
+    test "output_guard can block the answer" do
+      stub(AgentSea.MockProvider, :complete, fn _m, _o -> {:ok, %Response{content: "leaked"}} end)
+
+      block = fn out -> if out =~ "leaked", do: {:block, :pii}, else: {:ok, out} end
+      agent = start_agent(output_guard: block)
+
+      assert {:error, {:guardrail, :output, :pii}} = Agent.run(agent, "go")
+    end
+
+    test "output_guard can rewrite the returned answer" do
+      stub(AgentSea.MockProvider, :complete, fn _m, _o ->
+        {:ok, %Response{content: "call me at 555-123-4567"}}
+      end)
+
+      redact = fn out -> {:ok, String.replace(out, "555-123-4567", "[PHONE]")} end
+      agent = start_agent(output_guard: redact)
+
+      assert {:ok, %Response{content: "call me at [PHONE]"}} = Agent.run(agent, "go")
+    end
+  end
 end
