@@ -26,11 +26,13 @@ defmodule AgentSea.Embeddings.MixProject do
   defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
-    # The store + hashing embedder are dependency-free; core is needed only for
-    # the optional retrieval tool (the AgentSea.Tool behaviour). Bumblebee/Nx
-    # and pgvector are future drop-in adapters.
+    # The in-memory store + hashing embedder are dependency-free; core is needed
+    # for the retrieval tool, and postgrex/jason for the pgvector store. Bumblebee
+    # is a future drop-in embedder.
     [
       {:agentsea_core, in_umbrella: true},
+      {:postgrex, "~> 0.17"},
+      {:jason, "~> 1.4"},
       {:mox, "~> 1.1", only: :test}
     ]
   end
