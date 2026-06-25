@@ -8,6 +8,11 @@ erl_crash.dump
 *.ez
 *.beam
 
+# Dialyzer PLTs (built locally / in CI cache)
+/priv/plts/
+*.plt
+*.plt.hash
+
 # Generated when building a release
 /agentsea-*.tar
 

@@ -13,7 +13,7 @@ defmodule AgentSea.Gateway.CircuitBreaker do
   @fuse_options {{:standard, 1, 10_000}, {:reset, 30_000}}
 
   @doc "Install the provider's fuse if it isn't already present."
-  @spec ensure(term()) :: :ok
+  @spec ensure(term()) :: :ok | :reset | {:error, term()}
   def ensure(name) do
     case :fuse.ask(fuse_name(name), :sync) do
       :ok -> :ok
@@ -37,7 +37,7 @@ defmodule AgentSea.Gateway.CircuitBreaker do
   def melt(name), do: :fuse.melt(fuse_name(name))
 
   @doc "Remove the provider's fuse (e.g. on gateway shutdown / test cleanup)."
-  @spec remove(term()) :: :ok | {:error, :not_found}
+  @spec remove(term()) :: :ok
   def remove(name), do: :fuse.remove(fuse_name(name))
 
   defp fuse_name(name), do: :"agentsea_gateway_fuse_#{name}"

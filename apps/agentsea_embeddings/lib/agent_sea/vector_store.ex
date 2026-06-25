@@ -5,7 +5,9 @@ defmodule AgentSea.VectorStore do
   or remote stores (Pinecone/Qdrant) over HTTP.
   """
 
-  @type store :: GenServer.server()
+  # Opaque per-adapter handle: a process (the in-memory store) or a config map
+  # bundling a connection (the pgvector store).
+  @type store :: GenServer.server() | map()
   @type record :: %{
           required(:id) => term(),
           required(:vector) => [float()],

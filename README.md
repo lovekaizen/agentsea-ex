@@ -59,9 +59,12 @@ mix test --include postgres       # + live pgvector (needs Postgres w/ the vecto
 mix test --include bumblebee      # + live HF model (downloads all-MiniLM-L6-v2, ~90MB)
 mix format --check-formatted
 mix compile --warnings-as-errors
+mix credo                         # static analysis
+mix dialyzer                      # type analysis (first run builds the PLT)
+mix docs                          # aggregated HTML docs across all apps -> doc/
 ```
 
-Heavyweight or service-dependent tests are tagged and **excluded by default**, so the standard suite stays fast and hermetic; CI runs that suite plus the format and warnings-as-errors gates.
+Heavyweight or service-dependent tests are tagged and **excluded by default**, so the standard suite stays fast and hermetic; CI runs that suite plus the format, warnings-as-errors, Credo, and Dialyzer gates.
 
 ## License
 

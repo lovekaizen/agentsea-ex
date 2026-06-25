@@ -25,7 +25,7 @@ defmodule AgentSea.MCP do
   Connect to an MCP server subprocess over stdio. `command` is `[executable |
   args]` (e.g. `["node", "server.js"]`). Returns `{:ok, client}`.
   """
-  @spec connect_stdio([String.t()], keyword()) :: {:ok, pid()} | {:error, term()}
+  @spec connect_stdio([String.t()], keyword()) :: GenServer.on_start()
   def connect_stdio(command, opts \\ []) do
     with {:ok, transport} <- AgentSea.MCP.Transport.Stdio.start_link(command: command) do
       connect({AgentSea.MCP.Transport.Stdio, transport}, opts)
@@ -36,7 +36,7 @@ defmodule AgentSea.MCP do
   Connect to an MCP server over Streamable HTTP. `url` is the server endpoint;
   `:headers` and `:adapter` are forwarded to the transport. Returns `{:ok, client}`.
   """
-  @spec connect_http(String.t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  @spec connect_http(String.t(), keyword()) :: GenServer.on_start()
   def connect_http(url, opts \\ []) do
     transport_opts = [url: url] ++ Keyword.take(opts, [:headers, :adapter])
 

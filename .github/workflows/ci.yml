@@ -38,6 +38,14 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-
 
+      - name: Cache Dialyzer PLTs
+        uses: actions/cache@v4
+        with:
+          path: priv/plts
+          key: ${{ runner.os }}-plt-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-plt-${{ matrix.otp }}-${{ matrix.elixir }}-
+
       - name: Install dependencies
         run: mix deps.get
 
@@ -47,8 +55,14 @@ jobs:
       - name: Compile (warnings as errors)
         run: mix compile --warnings-as-errors
 
+      - name: Credo
+        run: mix credo
+
       - name: Run tests
         run: mix test
         # The default suite is offline. Live integration tests are opt-in:
         #   mix test --include postgres   (needs Postgres + pgvector)
         #   mix test --include bumblebee  (downloads a Hugging Face model)
+
+      - name: Dialyzer
+        run: mix dialyzer
