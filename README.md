@@ -36,6 +36,7 @@ An umbrella of independently-releasable `agentsea_*` apps. Each owns one concern
 | `agentsea_bumblebee` | in-process HF-model embedder **and Whisper STT** via Bumblebee + Nx (no API) |
 | `agentsea_ingest` | Broadway pipeline: chunk → embed → store, with batching/backpressure |
 | `agentsea_evaluate` | concurrent metrics (exact-match, contains, LLM-as-judge) + aggregation |
+| `agentsea_guardrails` | input/output guardrail pipeline — max-length, blocklist, PII redaction, LLM moderation |
 | `agentsea_mcp` | MCP client with **stdio** and **streamable-HTTP** transports; server tools adapted into agent `Tool.Spec`s |
 | `agentsea_surf` | Node/Playwright browser sidecar over a `Port`, exposed as agent tools |
 | `agentsea_voice` | `TTS`/`STT` behaviours + OpenAI (TTS+STT) and ElevenLabs (TTS) adapters over `Req` |
