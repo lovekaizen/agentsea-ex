@@ -36,6 +36,7 @@ defmodule AgentSea.Structured.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_core),
       # Pinned to the 3.12 line (decimal ~> 2.0) so it co-resolves with bumblebee,
       # whose progress_bar requires decimal ~> 2.0. Ecto 3.13+ moved to decimal 3.0.

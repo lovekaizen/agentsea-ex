@@ -30,6 +30,7 @@ defmodule AgentSea.Guardrails.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_core),
       {:mox, "~> 1.1", only: :test}
     ]

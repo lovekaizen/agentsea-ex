@@ -30,6 +30,7 @@ defmodule AgentSea.Bumblebee.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_embeddings),
       AgentSea.HexDeps.sibling(:agentsea_voice),
       {:bumblebee, "~> 0.6"},

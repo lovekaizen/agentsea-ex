@@ -37,6 +37,7 @@ defmodule AgentSea.Web.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_core),
       AgentSea.HexDeps.sibling(:agentsea_gateway),
       {:phoenix, "~> 1.7.14"},

@@ -39,6 +39,7 @@ defmodule AgentSea.Embeddings.MixProject do
     # for the retrieval tool, postgrex/jason for the pgvector store, and req for
     # the Qdrant store. Bumblebee is a drop-in embedder (see agentsea_bumblebee).
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_core),
       {:postgrex, "~> 0.17"},
       {:req, "~> 0.5"},

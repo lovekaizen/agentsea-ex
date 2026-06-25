@@ -32,6 +32,7 @@ defmodule AgentSea.MCP.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_core),
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},

@@ -30,6 +30,7 @@ defmodule AgentSea.Voice.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       {:req, "~> 0.5"},
       {:jason, "~> 1.4"}
     ]

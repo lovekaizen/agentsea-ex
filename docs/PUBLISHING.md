@@ -83,25 +83,17 @@ done
 
 ## 5. Docs on HexDocs
 
-`mix hex.publish` publishes HexDocs for the package — **if the app can build
-docs**, which needs `ex_doc`. `ex_doc` is currently a dependency of the
-**umbrella root only**, not the child apps. Two options:
+Every app already depends on `ex_doc` (`only: :dev`), so `mix hex.publish`
+builds and ships per-package HexDocs automatically — nothing extra to do. To
+(re)publish only docs for one app:
 
-- **Per-package HexDocs (recommended):** add `ex_doc` to each app you want
-  documented and (re)publish its docs:
+```bash
+cd apps/<app> && HEX_PUBLISH=1 mix hex.publish docs
+```
 
-  ```elixir
-  # in apps/<app>/mix.exs deps/0
-  {:ex_doc, "~> 0.34", only: :dev, runtime: false}
-  ```
-
-  ```bash
-  cd apps/<app> && HEX_PUBLISH=1 mix hex.publish docs
-  ```
-
-- **One aggregated doc site:** the umbrella root already builds combined docs for
-  all 14 apps with `mix docs` (→ `doc/`). Host that on GitHub Pages and link it
-  from each package's `links`. This avoids adding `ex_doc` to every app.
+The umbrella root **also** builds one combined doc site across all 14 apps with
+`mix docs` (→ `doc/`) — handy to host on GitHub Pages and link from each
+package's `links`.
 
 ## 6. Releasing a new version
 

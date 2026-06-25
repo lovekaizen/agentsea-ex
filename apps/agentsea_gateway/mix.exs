@@ -36,6 +36,7 @@ defmodule AgentSea.Gateway.MixProject do
 
   defp deps do
     [
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
       AgentSea.HexDeps.sibling(:agentsea_core),
       {:fuse, "~> 2.5"},
       {:telemetry, "~> 1.0"}
