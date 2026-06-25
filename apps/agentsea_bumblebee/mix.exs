@@ -22,6 +22,7 @@ defmodule AgentSea.Bumblebee.MixProject do
   defp deps do
     [
       {:agentsea_embeddings, in_umbrella: true},
+      {:agentsea_voice, in_umbrella: true},
       {:bumblebee, "~> 0.6"},
       {:nx, "~> 0.9"}
     ]

@@ -33,7 +33,7 @@ An umbrella of independently-releasable `agentsea_*` apps. Each owns one concern
 | `agentsea_web` | Phoenix LiveView fleet dashboard fed by telemetry + PubSub; OpenAI-compatible `POST /v1/chat/completions` with real token streaming |
 | `agentsea_structured` | Ecto-changeset structured extraction with validation-retry |
 | `agentsea_embeddings` | `Embedder`/`VectorStore` behaviours; hashing embedder + in-memory, **pgvector**, and **Qdrant** stores; a RAG retrieval tool |
-| `agentsea_bumblebee` | in-process HF-model embedder via Bumblebee + Nx (no embedding API) |
+| `agentsea_bumblebee` | in-process HF-model embedder **and Whisper STT** via Bumblebee + Nx (no API) |
 | `agentsea_ingest` | Broadway pipeline: chunk → embed → store, with batching/backpressure |
 | `agentsea_evaluate` | concurrent metrics (exact-match, contains, LLM-as-judge) + aggregation |
 | `agentsea_mcp` | MCP client with **stdio** and **streamable-HTTP** transports; server tools adapted into agent `Tool.Spec`s |
