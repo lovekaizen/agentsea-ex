@@ -24,7 +24,7 @@ An umbrella of independently-releasable `agentsea_*` apps (`core`, `providers`, 
 
 ## Roadmap
 
-1. **Core loop** ✅ — Agent GenServer + Provider/Tool/Memory behaviours + Anthropic provider (Req), buffer memory, concurrent + crash-isolated tool execution. (`agentsea_core`, `agentsea_providers`)
+1. **Core loop** ✅ — Agent GenServer + Provider/Tool/Memory behaviours + Anthropic provider (Req) with non-streaming `complete/2` **and** real SSE `stream/2`, buffer memory, concurrent + crash-isolated tool execution. (`agentsea_core`, `agentsea_providers`)
 2. **Crews** ✅ — capabilities/roles, delegation strategies (round-robin, best-match, auction-as-fan-out), bidding, and a supervised coordinator that runs a task DAG (parallel where possible, dependency-aware) (`agentsea_crews`). Pause/resume/abort + `gen_statem` migration still to come.
 3. **Observability** ✅ — Telemetry instrumentation across provider/agent/tool/crew (`AgentSea.Telemetry`) plus a Phoenix LiveView dashboard (`agentsea_web`) that renders live fleet activity from those events.
 4. **Gateway** ✅ — strategy-based routing (failover, round-robin, cost-, latency-optimized), `:fuse` circuit breaking, failover, and health tracking (`agentsea_gateway`), plus an OpenAI-compatible `POST /v1/chat/completions` endpoint with **real token streaming** — provider `stream/2` events forwarded straight through as SSE chunks (`agentsea_web`).

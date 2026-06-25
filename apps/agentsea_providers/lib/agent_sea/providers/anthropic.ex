@@ -36,6 +36,17 @@ defmodule AgentSea.Providers.Anthropic do
   end
 
   @impl AgentSea.Provider
+  def stream(messages, opts) do
+    # Tests (and custom transports) can inject the raw byte stream via
+    # `:body_stream`, bypassing Req entirely.
+    chunks = opts[:body_stream] || request_stream(messages, opts)
+
+    chunks
+    |> AgentSea.Providers.SSE.events()
+    |> Stream.flat_map(&to_stream_event/1)
+  end
+
+  @impl AgentSea.Provider
   def model_info("claude-opus-4-8") do
     %AgentSea.ModelInfo{
       context_window: 1_000_000,
@@ -83,6 +94,32 @@ defmodule AgentSea.Providers.Anthropic do
 
   defp maybe_kw(kw, _key, nil), do: kw
   defp maybe_kw(kw, key, value), do: Keyword.put(kw, key, value)
+
+  # Open a streaming request and return Req's async body (an enumerable of raw
+  # SSE byte chunks). Only used for real network calls; tests inject chunks.
+  defp request_stream(messages, opts) do
+    body = messages |> build_body(opts) |> Map.put(:stream, true)
+    response = Req.post!(req(opts), url: "/v1/messages", json: body, into: :self)
+    response.body
+  end
+
+  # Map an Anthropic SSE event to AgentSea's normalized stream events.
+  defp to_stream_event(%{event: "content_block_delta", data: data}) do
+    case Jason.decode(data) do
+      {:ok, %{"delta" => %{"type" => "text_delta", "text" => text}}} ->
+        [{:content, text}]
+
+      {:ok, %{"delta" => %{"type" => "thinking_delta", "thinking" => text}}} ->
+        [{:thinking, text}]
+
+      _ ->
+        []
+    end
+  end
+
+  defp to_stream_event(%{event: "message_stop"}), do: [:done]
+  defp to_stream_event(%{event: nil, data: "[DONE]"}), do: [:done]
+  defp to_stream_event(_event), do: []
 
   defp build_body(messages, opts) do
     {system, turns} = split_system(messages)
