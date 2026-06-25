@@ -8,8 +8,20 @@ defmodule AgentSea.Embedder.Bumblebee do
       serving = AgentSea.Embedder.Bumblebee.serving("sentence-transformers/all-MiniLM-L6-v2")
       {:ok, vectors} = AgentSea.Embedder.Bumblebee.embed(["hello", "world"], serving: serving)
 
-  Runs on Nx's pure-Elixir backend out of the box; add `:exla` for speed. The
-  serving call is injectable (`:run`) so the embedding plumbing is testable
+  Runs on Nx's pure-Elixir backend out of the box. For real throughput, enable
+  EXLA — add `{:exla, "~> 0.9"}` and configure either globally:
+
+      config :nx, default_backend: EXLA.Backend
+
+  or per-serving (compiled `defn`), via app config that `serving/2` merges in:
+
+      config :agentsea_bumblebee,
+        serving_options: [
+          defn_options: [compiler: EXLA],
+          compile: [batch_size: 1, sequence_length: 256]
+        ]
+
+  The serving call is injectable (`:run`) so the embedding plumbing is testable
   without loading a model.
   """
 
@@ -24,7 +36,15 @@ defmodule AgentSea.Embedder.Bumblebee do
   def serving(model_id \\ @default_model, opts \\ []) do
     {:ok, model} = Bumblebee.load_model({:hf, model_id})
     {:ok, tokenizer} = Bumblebee.load_tokenizer({:hf, model_id})
-    Bumblebee.Text.text_embedding(model, tokenizer, opts)
+    Bumblebee.Text.text_embedding(model, tokenizer, Keyword.merge(serving_options(), opts))
+  end
+
+  @doc """
+  Serving options from app config (e.g. an EXLA compiler), merged into `serving/2`
+  with per-call `opts` taking precedence. See the module doc for enabling EXLA.
+  """
+  def serving_options do
+    Application.get_env(:agentsea_bumblebee, :serving_options, [])
   end
 
   @impl true

@@ -35,6 +35,15 @@ defmodule AgentSea.Embedder.BumblebeeTest do
     end
   end
 
+  test "serving_options/0 reads app env (for EXLA etc.), empty by default" do
+    assert Embedder.serving_options() == []
+
+    Application.put_env(:agentsea_bumblebee, :serving_options, defn_options: [compiler: FakeXLA])
+    assert Embedder.serving_options() == [defn_options: [compiler: FakeXLA]]
+  after
+    Application.delete_env(:agentsea_bumblebee, :serving_options)
+  end
+
   test "dimensions/0 reads app env (default 384)" do
     assert Embedder.dimensions() == 384
 
