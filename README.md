@@ -26,13 +26,13 @@ An umbrella of independently-releasable `agentsea_*` apps. Each owns one concern
 
 | App | Concern |
 |-----|---------|
-| `agentsea_core` | Agent `GenServer` + the run loop; `Provider`/`Tool`/`Memory`/`Tool.Spec` behaviours; capabilities, roles, bidding; `:telemetry` spans; buffer memory; crash-isolated concurrent tool execution |
+| `agentsea_core` | Agent `GenServer` + the run loop (with optional guardrail hooks); `Provider`/`Tool`/`Memory`/`Tool.Spec` behaviours; capabilities, roles, bidding; `:telemetry` spans; buffer + LLM-summary memory; crash-isolated concurrent tool execution |
 | `agentsea_providers` | Anthropic provider over `Req` — `complete/2` and real SSE `stream/2`; an SSE framer |
 | `agentsea_crews` | `DynamicSupervisor` + `Registry`; delegation strategies (round-robin, best-match, auction-as-fan-out); a coordinator that runs a task DAG, dependency-aware and parallel where possible |
 | `agentsea_gateway` | strategy routing (failover, round-robin, cost-/latency-optimized); `:fuse` circuit breaking; per-provider health; non-streaming and streaming routing |
 | `agentsea_web` | Phoenix LiveView fleet dashboard fed by telemetry + PubSub; OpenAI-compatible `POST /v1/chat/completions` with real token streaming |
 | `agentsea_structured` | Ecto-changeset structured extraction with validation-retry |
-| `agentsea_embeddings` | `Embedder`/`VectorStore` behaviours; hashing + **OpenAI/Cohere** embedders; in-memory, **pgvector**, **Qdrant**, **Pinecone** stores; a RAG retrieval tool |
+| `agentsea_embeddings` | `Embedder`/`VectorStore` behaviours; hashing + **OpenAI/Cohere** embedders; in-memory, **pgvector**, **Qdrant**, **Pinecone** stores; a RAG retrieval tool; **vector-recall memory** |
 | `agentsea_bumblebee` | in-process HF-model embedder **and Whisper STT** via Bumblebee + Nx (no API) |
 | `agentsea_ingest` | Broadway pipeline: chunk → embed → store, with batching/backpressure |
 | `agentsea_evaluate` | concurrent metrics (exact-match, contains, LLM-as-judge) + aggregation |
