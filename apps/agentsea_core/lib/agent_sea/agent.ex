@@ -176,14 +176,27 @@ defmodule AgentSea.Agent do
       result =
         case find_tool(tools, name) do
           nil -> {:error, {:unknown_tool, name}}
-          tool_mod -> tool_mod.run(args, ctx)
+          tool -> invoke_tool(tool, args, ctx)
         end
 
       {result, Map.put(meta, :outcome, elem(result, 0))}
     end)
   end
 
-  defp find_tool(tools, name), do: Enum.find(tools, fn mod -> mod.name() == name end)
+  defp find_tool(tools, name), do: Enum.find(tools, &(tool_name(&1) == name))
+
+  # Tools may be AgentSea.Tool modules or runtime AgentSea.Tool.Spec values.
+  defp tool_name(%AgentSea.Tool.Spec{name: name}), do: name
+  defp tool_name(module) when is_atom(module), do: module.name()
+
+  defp invoke_tool(%AgentSea.Tool.Spec{run: run}, args, ctx), do: run.(args, ctx)
+  defp invoke_tool(module, args, ctx) when is_atom(module), do: module.run(args, ctx)
+
+  defp tool_description(%AgentSea.Tool.Spec{description: description}), do: description
+  defp tool_description(module) when is_atom(module), do: module.description()
+
+  defp tool_schema(%AgentSea.Tool.Spec{schema: schema}), do: schema
+  defp tool_schema(module) when is_atom(module), do: module.schema()
 
   # --- Message helpers ---
 
@@ -236,8 +249,8 @@ defmodule AgentSea.Agent do
   defp tool_specs([]), do: nil
 
   defp tool_specs(tools) do
-    Enum.map(tools, fn mod ->
-      %{name: mod.name(), description: mod.description(), schema: mod.schema()}
+    Enum.map(tools, fn tool ->
+      %{name: tool_name(tool), description: tool_description(tool), schema: tool_schema(tool)}
     end)
   end
 
