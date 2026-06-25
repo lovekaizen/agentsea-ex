@@ -30,6 +30,9 @@ defmodule AgentSea.VectorStore.PostgresTest do
 
     test "implements the AgentSea.VectorStore callbacks" do
       # (@behaviour + @impl already enforce this at compile time.)
+      # ensure_loaded! so function_exported?/3 doesn't see an unloaded module
+      # when this test happens to run before the others (ordering is seeded).
+      Code.ensure_loaded!(Postgres)
       assert function_exported?(Postgres, :upsert, 2)
       assert function_exported?(Postgres, :query, 4)
       assert function_exported?(Postgres, :delete, 2)
