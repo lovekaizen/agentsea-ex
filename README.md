@@ -32,7 +32,7 @@ An umbrella of independently-releasable `agentsea_*` apps. Each owns one concern
 | `agentsea_gateway` | strategy routing (failover, round-robin, cost-/latency-optimized); `:fuse` circuit breaking; per-provider health; non-streaming and streaming routing |
 | `agentsea_web` | Phoenix LiveView fleet dashboard fed by telemetry + PubSub; OpenAI-compatible `POST /v1/chat/completions` with real token streaming |
 | `agentsea_structured` | Ecto-changeset structured extraction with validation-retry |
-| `agentsea_embeddings` | `Embedder`/`VectorStore` behaviours; hashing embedder + in-memory, **pgvector**, **Qdrant**, and **Pinecone** stores; a RAG retrieval tool |
+| `agentsea_embeddings` | `Embedder`/`VectorStore` behaviours; hashing + **OpenAI/Cohere** embedders; in-memory, **pgvector**, **Qdrant**, **Pinecone** stores; a RAG retrieval tool |
 | `agentsea_bumblebee` | in-process HF-model embedder **and Whisper STT** via Bumblebee + Nx (no API) |
 | `agentsea_ingest` | Broadway pipeline: chunk → embed → store, with batching/backpressure |
 | `agentsea_evaluate` | concurrent metrics (exact-match, contains, LLM-as-judge) + aggregation |
