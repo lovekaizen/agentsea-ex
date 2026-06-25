@@ -25,13 +25,30 @@ defmodule AgentSea.Guardrails do
       {module, opts} = normalize(guardrail)
 
       case module.check(current, opts) do
-        :ok -> {:cont, {:ok, current}}
-        {:transform, new} -> {:cont, {:ok, new}}
-        {:block, reason} -> {:halt, {:block, {module.name(), reason}}}
+        :ok ->
+          {:cont, {:ok, current}}
+
+        {:transform, new} ->
+          emit(module, :transform)
+          {:cont, {:ok, new}}
+
+        {:block, reason} ->
+          emit(module, :block)
+          {:halt, {:block, {module.name(), reason}}}
       end
     end)
   end
 
   defp normalize({module, opts}), do: {module, opts}
   defp normalize(module), do: {module, []}
+
+  # Emit only the noteworthy outcomes (a transform or a block), so the dashboard
+  # / any telemetry handler sees guardrail activity. A plain pass is silent.
+  defp emit(module, outcome) do
+    :telemetry.execute(
+      [:agentsea, :guardrail, :stop],
+      %{system_time: System.system_time()},
+      %{guardrail: module.name(), outcome: outcome}
+    )
+  end
 end

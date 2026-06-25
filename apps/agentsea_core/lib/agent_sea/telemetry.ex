@@ -25,6 +25,9 @@ defmodule AgentSea.Telemetry do
       * metadata: `%{crew, task_id, agent}`; `:stop` carries `%{crew, task_id, outcome}`
     * `[:agentsea, :gateway, :route, :stop]` — a gateway routing decision
       * metadata: `%{provider, outcome}`; measurements `%{attempts, latency_ms}`
+    * `[:agentsea, :guardrail, :stop]` — a guardrail acted on content (emitted
+      only when a guardrail transforms or blocks, not on a plain pass)
+      * metadata: `%{guardrail, outcome}` where `outcome` is `:transform | :block`
   """
 
   require Logger
@@ -38,7 +41,8 @@ defmodule AgentSea.Telemetry do
   @discrete [
     [:agentsea, :crew, :kickoff],
     [:agentsea, :crew, :task],
-    [:agentsea, :gateway, :route]
+    [:agentsea, :gateway, :route],
+    [:agentsea, :guardrail]
   ]
 
   @doc "Every event name AgentSea may emit."

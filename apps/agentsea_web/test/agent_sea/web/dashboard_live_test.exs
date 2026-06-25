@@ -49,4 +49,23 @@ defmodule AgentSea.Web.DashboardLiveTest do
     assert html =~ "Agent runs: 1"
     assert html =~ "Crews: 1"
   end
+
+  test "counts guardrail blocks (but not transforms)", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/")
+
+    :telemetry.execute([:agentsea, :guardrail, :stop], %{system_time: 1}, %{
+      guardrail: "pii_redactor",
+      outcome: :transform
+    })
+
+    :telemetry.execute([:agentsea, :guardrail, :stop], %{system_time: 1}, %{
+      guardrail: "blocklist",
+      outcome: :block
+    })
+
+    html = render(view)
+    # The transform shows in the feed but only the block increments the counter.
+    assert html =~ "Guardrail blocks: 1"
+    assert html =~ "agentsea.guardrail.stop"
+  end
 end

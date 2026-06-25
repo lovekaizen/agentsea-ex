@@ -17,7 +17,7 @@ defmodule AgentSea.Web.DashboardLive do
     {:ok,
      assign(socket,
        events: [],
-       stats: %{runs: 0, tool_runs: 0, crews: 0, input_tokens: 0, output_tokens: 0}
+       stats: %{runs: 0, tool_runs: 0, crews: 0, input_tokens: 0, output_tokens: 0, blocked: 0}
      )}
   end
 
@@ -45,6 +45,11 @@ defmodule AgentSea.Web.DashboardLive do
         |> Map.update!(:input_tokens, &(&1 + Map.get(metadata, :input_tokens, 0)))
         |> Map.update!(:output_tokens, &(&1 + Map.get(metadata, :output_tokens, 0)))
 
+      [:agentsea, :guardrail, :stop] ->
+        if Map.get(metadata, :outcome) == :block,
+          do: Map.update!(stats, :blocked, &(&1 + 1)),
+          else: stats
+
       _ ->
         stats
     end
@@ -61,6 +66,7 @@ defmodule AgentSea.Web.DashboardLive do
         <span id="stat-tools">Tool runs: {@stats.tool_runs}</span>
         <span id="stat-crews">Crews: {@stats.crews}</span>
         <span id="stat-tokens">Tokens: {@stats.input_tokens + @stats.output_tokens}</span>
+        <span id="stat-blocked">Guardrail blocks: {@stats.blocked}</span>
       </div>
 
       <ul id="events">
