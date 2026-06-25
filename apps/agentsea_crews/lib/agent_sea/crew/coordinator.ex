@@ -1,6 +1,8 @@
 defmodule AgentSea.Crew.Coordinator do
   @moduledoc """
-  Drives a crew's task DAG.
+  Drives a crew's task DAG, modeled as a `:gen_statem` whose states *are* the
+  crew lifecycle: `:idle → :running → :completed`, with `:paused` (pause/resume)
+  and `:aborted` branches.
 
   On `kickoff/1` it dispatches every task whose dependencies are satisfied to an
   agent (chosen by the delegation strategy) as a supervised `Task`. Results
@@ -8,22 +10,26 @@ defmodule AgentSea.Crew.Coordinator do
   whose dependencies failed are marked `:dependency_failed`. When everything is
   settled it replies to the kickoff caller with the aggregate result.
 
-  Lifecycle status: `:idle → :running → :completed`, with `pause/1`, `resume/1`,
-  and `abort/1` controls — `pause` stops dispatching new tasks (in-flight work
-  finishes), `resume` continues from where it left off, and `abort` cancels
-  in-flight tasks and settles the crew (`:running ⇄ :paused`, either `→ :aborted`).
+  `pause` stops dispatching new tasks (in-flight work finishes), `resume`
+  continues, and `abort` cancels in-flight tasks and settles the crew. Invalid
+  transitions return `{:error, {:invalid_status, state}}`.
   """
 
-  use GenServer
+  @behaviour :gen_statem
 
   alias AgentSea.Crew
   alias AgentSea.Crew.{Delegation, Supervisor}
   alias AgentSea.Crew.Task, as: CrewTask
 
-  # --- Client API (target a crew by name) ---
+  # --- Client API (target a crew by name; gen_statem speaks the gen_server call
+  # protocol, so GenServer.call works) ---
 
   def start_link(%Crew.Spec{name: name} = spec) do
-    GenServer.start_link(__MODULE__, spec, name: Supervisor.via(name, :coordinator))
+    :gen_statem.start_link(Supervisor.via(name, :coordinator), __MODULE__, spec, [])
+  end
+
+  def child_spec(spec) do
+    %{id: __MODULE__, start: {__MODULE__, :start_link, [spec]}}
   end
 
   def add_task(crew, attrs), do: GenServer.call(via(crew), {:add_task, attrs})
@@ -41,13 +47,15 @@ defmodule AgentSea.Crew.Coordinator do
 
   defp via(crew), do: Supervisor.via(crew, :coordinator)
 
-  # --- Server ---
+  # --- gen_statem setup ---
 
-  @impl true
+  @impl :gen_statem
+  def callback_mode, do: :handle_event_function
+
+  @impl :gen_statem
   def init(%Crew.Spec{} = spec) do
-    state = %{
+    data = %{
       spec: spec,
-      status: :idle,
       agents: [],
       tasks: %{},
       results: %{},
@@ -59,156 +67,189 @@ defmodule AgentSea.Crew.Coordinator do
       kickoff_started: nil
     }
 
-    {:ok, state, {:continue, :start_agents}}
+    {:ok, :idle, data, [{:next_event, :internal, :start_agents}]}
   end
 
-  @impl true
-  def handle_continue(:start_agents, %{spec: spec} = state) do
-    agent_sup = Supervisor.via(spec.name, :agent_sup)
+  # --- Events ---
+
+  @impl :gen_statem
+  def handle_event(:internal, :start_agents, :idle, data) do
+    agent_sup = Supervisor.via(data.spec.name, :agent_sup)
 
     agents =
-      Enum.map(spec.agents, fn config ->
+      Enum.map(data.spec.agents, fn config ->
         {:ok, pid} = DynamicSupervisor.start_child(agent_sup, {AgentSea.Agent, config})
         %{name: config.name, pid: pid, role: config.role}
       end)
 
-    {:noreply, %{state | agents: agents}}
+    {:keep_state, %{data | agents: agents}}
   end
 
-  @impl true
-  def handle_call({:add_task, attrs}, _from, %{status: :idle} = state) do
+  # add_task: only while idle.
+  def handle_event({:call, from}, {:add_task, attrs}, :idle, data) do
     task = CrewTask.new(attrs)
-    {:reply, {:ok, task}, %{state | tasks: Map.put(state.tasks, task.id, task)}}
+
+    {:keep_state, %{data | tasks: Map.put(data.tasks, task.id, task)},
+     [{:reply, from, {:ok, task}}]}
   end
 
-  def handle_call({:add_task, _attrs}, _from, state) do
-    {:reply, {:error, {:invalid_status, state.status}}, state}
+  def handle_event({:call, from}, {:add_task, _attrs}, state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:error, {:invalid_status, state}}}]}
   end
 
-  def handle_call(:kickoff, from, %{status: :idle} = state) do
+  # kickoff: only from idle.
+  def handle_event({:call, from}, :kickoff, :idle, data) do
     :telemetry.execute(
       [:agentsea, :crew, :kickoff, :start],
       %{system_time: System.system_time()},
-      %{crew: state.spec.name, task_count: map_size(state.tasks)}
+      %{crew: data.spec.name, task_count: map_size(data.tasks)}
     )
 
-    state =
-      %{state | status: :running, caller: from, kickoff_started: System.monotonic_time()}
-      |> dispatch_ready()
+    data = dispatch_ready(%{data | caller: from, kickoff_started: System.monotonic_time()})
 
-    if settled?(state) do
-      complete(state)
+    if settled?(data), do: finish_completed(data), else: {:next_state, :running, data}
+  end
+
+  def handle_event({:call, from}, :kickoff, state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:error, {:invalid_status, state}}}]}
+  end
+
+  # status: the gen_statem state name is the status.
+  def handle_event({:call, from}, :status, state, _data) do
+    {:keep_state_and_data, [{:reply, from, state}]}
+  end
+
+  # pause: only while running.
+  def handle_event({:call, from}, :pause, :running, data) do
+    {:next_state, :paused, data, [{:reply, from, :ok}]}
+  end
+
+  def handle_event({:call, from}, :pause, state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:error, {:invalid_status, state}}}]}
+  end
+
+  # resume: only while paused.
+  def handle_event({:call, from}, :resume, :paused, data) do
+    data = dispatch_ready(data)
+
+    if settled?(data) do
+      {data, actions} = finish(data)
+      {:next_state, :completed, data, [{:reply, from, :ok} | actions]}
     else
-      {:noreply, state}
+      {:next_state, :running, data, [{:reply, from, :ok}]}
     end
   end
 
-  def handle_call(:kickoff, _from, state) do
-    {:reply, {:error, {:invalid_status, state.status}}, state}
+  def handle_event({:call, from}, :resume, state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:error, {:invalid_status, state}}}]}
   end
 
-  def handle_call(:status, _from, state), do: {:reply, state.status, state}
-
-  def handle_call(:pause, _from, %{status: :running} = state) do
-    {:reply, :ok, %{state | status: :paused}}
-  end
-
-  def handle_call(:pause, _from, state) do
-    {:reply, {:error, {:invalid_status, state.status}}, state}
-  end
-
-  def handle_call(:resume, _from, %{status: :paused} = state) do
-    state = dispatch_ready(%{state | status: :running})
-
-    if settled?(state) do
-      {:noreply, completed} = complete(state)
-      {:reply, :ok, completed}
-    else
-      {:reply, :ok, state}
-    end
-  end
-
-  def handle_call(:resume, _from, state) do
-    {:reply, {:error, {:invalid_status, state.status}}, state}
-  end
-
-  def handle_call(:abort, _from, %{status: status} = state) when status in [:running, :paused] do
-    task_sup = Supervisor.via(state.spec.name, :task_sup)
+  # abort: while running or paused.
+  def handle_event({:call, from}, :abort, state, data) when state in [:running, :paused] do
+    task_sup = Supervisor.via(data.spec.name, :task_sup)
 
     for pid <- Task.Supervisor.children(task_sup) do
       Task.Supervisor.terminate_child(task_sup, pid)
     end
 
-    # Drop the monitors (and any queued DOWNs) for the tasks we just killed.
-    for ref <- Map.keys(state.running), do: Process.demonitor(ref, [:flush])
+    for ref <- Map.keys(data.running), do: Process.demonitor(ref, [:flush])
 
-    emit_kickoff_stop(state, false)
-    if state.caller, do: GenServer.reply(state.caller, {:error, :aborted})
+    emit_kickoff_stop(data, false)
+    caller_actions = if data.caller, do: [{:reply, data.caller, {:error, :aborted}}], else: []
 
-    {:reply, :ok, %{state | status: :aborted, running: %{}, caller: nil}}
+    {:next_state, :aborted, %{data | running: %{}, caller: nil},
+     [{:reply, from, :ok} | caller_actions]}
   end
 
-  def handle_call(:abort, _from, state) do
-    {:reply, {:error, {:invalid_status, state.status}}, state}
+  def handle_event({:call, from}, :abort, state, _data) do
+    {:keep_state_and_data, [{:reply, from, {:error, {:invalid_status, state}}}]}
   end
 
   # A delegated task finished (Agent.run returned {:ok, _} | {:error, _}).
-  @impl true
-  def handle_info({ref, {:task_done, task_id, result}}, %{running: running} = state)
-      when is_map_key(running, ref) do
-    Process.demonitor(ref, [:flush])
-
-    state =
-      case result do
-        {:ok, response} ->
-          emit_task_stop(state, task_id, :ok)
-          %{state | results: Map.put(state.results, task_id, response)}
-
-        {:error, reason} ->
-          emit_task_stop(state, task_id, :error)
-          %{state | failures: Map.put(state.failures, task_id, reason)}
-      end
-
-    advance(%{state | running: Map.delete(running, ref)})
-  end
-
-  # A delegated Task process crashed before replying.
-  def handle_info({:DOWN, ref, :process, _pid, reason}, %{running: running} = state)
-      when is_map_key(running, ref) do
-    {task_id, running} = Map.pop(running, ref)
-    emit_task_stop(state, task_id, :crashed)
-
-    state = %{
-      state
-      | failures: Map.put(state.failures, task_id, {:crashed, reason}),
-        running: running
-    }
-
-    advance(state)
-  end
-
-  def handle_info(_msg, state), do: {:noreply, state}
-
-  # --- DAG dispatch ---
-
-  defp advance(state) do
-    state = dispatch_ready(state)
-
-    if settled?(state) do
-      complete(state)
+  def handle_event(:info, {ref, {:task_done, task_id, result}}, state, data)
+      when state in [:running, :paused] do
+    if is_map_key(data.running, ref) do
+      Process.demonitor(ref, [:flush])
+      progress(state, record_done(data, ref, task_id, result))
     else
-      {:noreply, state}
+      :keep_state_and_data
     end
   end
 
-  defp dispatch_ready(%{status: :running} = state) do
+  # A delegated Task process crashed before replying.
+  def handle_event(:info, {:DOWN, ref, :process, _pid, reason}, state, data)
+      when state in [:running, :paused] do
+    if is_map_key(data.running, ref) do
+      {task_id, running} = Map.pop(data.running, ref)
+      emit_task_stop(data, task_id, :crashed)
+
+      data = %{
+        data
+        | failures: Map.put(data.failures, task_id, {:crashed, reason}),
+          running: running
+      }
+
+      progress(state, data)
+    else
+      :keep_state_and_data
+    end
+  end
+
+  # Ignore everything else (stray messages in settled states, etc.).
+  def handle_event(_type, _content, _state, _data), do: :keep_state_and_data
+
+  # --- Advancing the DAG ---
+
+  # Running: record + try to dispatch more, then maybe complete. Paused: record
+  # only (no new dispatch); complete only if everything happens to be settled.
+  defp progress(:running, data) do
+    data = dispatch_ready(data)
+    if settled?(data), do: finish_completed(data), else: {:keep_state, data}
+  end
+
+  defp progress(:paused, data) do
+    if settled?(data), do: finish_completed(data), else: {:keep_state, data}
+  end
+
+  defp finish_completed(data) do
+    {data, actions} = finish(data)
+    {:next_state, :completed, data, actions}
+  end
+
+  defp finish(data) do
+    result = %{
+      success: map_size(data.failures) == 0,
+      results: data.results,
+      failures: data.failures
+    }
+
+    emit_kickoff_stop(data, result.success)
+    actions = if data.caller, do: [{:reply, data.caller, {:ok, result}}], else: []
+    {%{data | caller: nil}, actions}
+  end
+
+  defp record_done(data, ref, task_id, result) do
+    data = %{data | running: Map.delete(data.running, ref)}
+
+    case result do
+      {:ok, response} ->
+        emit_task_stop(data, task_id, :ok)
+        %{data | results: Map.put(data.results, task_id, response)}
+
+      {:error, reason} ->
+        emit_task_stop(data, task_id, :error)
+        %{data | failures: Map.put(data.failures, task_id, reason)}
+    end
+  end
+
+  defp dispatch_ready(data) do
     pending =
-      for {id, task} <- state.tasks,
-          not done?(state, id),
-          not running?(state, id),
+      for {id, task} <- data.tasks,
+          not done?(data, id),
+          not running?(data, id),
           do: task
 
-    Enum.reduce(pending, state, fn task, acc ->
+    Enum.reduce(pending, data, fn task, acc ->
       cond do
         blocked?(acc, task) -> put_failure(acc, task.id, :dependency_failed)
         deps_ready?(acc, task) -> dispatch_one(acc, task)
@@ -217,21 +258,18 @@ defmodule AgentSea.Crew.Coordinator do
     end)
   end
 
-  # Paused/aborted/completed: don't dispatch new work.
-  defp dispatch_ready(state), do: state
+  defp dispatch_one(data, task) do
+    ctx = Map.put(data.spec.delegation_ctx, :counter, data.rr_counter)
 
-  defp dispatch_one(state, task) do
-    ctx = Map.put(state.spec.delegation_ctx, :counter, state.rr_counter)
-
-    case Delegation.select(state.spec.strategy, task, state.agents, ctx) do
+    case Delegation.select(data.spec.strategy, task, data.agents, ctx) do
       {:ok, %Delegation.Result{selected_agent: name}} ->
-        agent = Enum.find(state.agents, &(&1.name == name))
-        task_sup = Supervisor.via(state.spec.name, :task_sup)
+        agent = Enum.find(data.agents, &(&1.name == name))
+        task_sup = Supervisor.via(data.spec.name, :task_sup)
 
         :telemetry.execute(
           [:agentsea, :crew, :task, :start],
           %{system_time: System.system_time()},
-          %{crew: state.spec.name, task_id: task.id, agent: name}
+          %{crew: data.spec.name, task_id: task.id, agent: name}
         )
 
         t =
@@ -239,70 +277,53 @@ defmodule AgentSea.Crew.Coordinator do
             {:task_done, task.id, AgentSea.Agent.run(agent.pid, CrewTask.input(task))}
           end)
 
-        %{
-          state
-          | running: Map.put(state.running, t.ref, task.id),
-            rr_counter: state.rr_counter + 1
-        }
+        %{data | running: Map.put(data.running, t.ref, task.id), rr_counter: data.rr_counter + 1}
 
       {:error, reason} ->
-        put_failure(state, task.id, {:delegation_failed, reason})
+        put_failure(data, task.id, {:delegation_failed, reason})
     end
-  end
-
-  defp complete(state) do
-    result = %{
-      success: map_size(state.failures) == 0,
-      results: state.results,
-      failures: state.failures
-    }
-
-    emit_kickoff_stop(state, result.success)
-
-    if state.caller, do: GenServer.reply(state.caller, {:ok, result})
-    {:noreply, %{state | status: :completed, caller: nil}}
-  end
-
-  defp emit_kickoff_stop(state, success) do
-    duration =
-      if state.kickoff_started, do: System.monotonic_time() - state.kickoff_started, else: 0
-
-    :telemetry.execute(
-      [:agentsea, :crew, :kickoff, :stop],
-      %{duration: duration},
-      %{crew: state.spec.name, success: success, task_count: map_size(state.tasks)}
-    )
   end
 
   # --- Predicates / helpers ---
 
-  defp settled?(state) do
-    map_size(state.running) == 0 and
-      Enum.all?(state.tasks, fn {id, _task} -> done?(state, id) end)
+  defp settled?(data) do
+    map_size(data.running) == 0 and
+      Enum.all?(data.tasks, fn {id, _task} -> done?(data, id) end)
   end
 
-  defp done?(state, id),
-    do: Map.has_key?(state.results, id) or Map.has_key?(state.failures, id)
+  defp done?(data, id),
+    do: Map.has_key?(data.results, id) or Map.has_key?(data.failures, id)
 
-  defp running?(state, id), do: id in Map.values(state.running)
+  defp running?(data, id), do: id in Map.values(data.running)
 
-  defp deps_ready?(state, %CrewTask{depends_on: deps}),
-    do: Enum.all?(deps, &Map.has_key?(state.results, &1))
+  defp deps_ready?(data, %CrewTask{depends_on: deps}),
+    do: Enum.all?(deps, &Map.has_key?(data.results, &1))
 
-  defp blocked?(state, %CrewTask{depends_on: deps}) do
+  defp blocked?(data, %CrewTask{depends_on: deps}) do
     Enum.any?(deps, fn dep ->
-      Map.has_key?(state.failures, dep) or not Map.has_key?(state.tasks, dep)
+      Map.has_key?(data.failures, dep) or not Map.has_key?(data.tasks, dep)
     end)
   end
 
-  defp put_failure(state, id, reason),
-    do: %{state | failures: Map.put(state.failures, id, reason)}
+  defp put_failure(data, id, reason),
+    do: %{data | failures: Map.put(data.failures, id, reason)}
 
-  defp emit_task_stop(state, task_id, outcome) do
+  defp emit_task_stop(data, task_id, outcome) do
     :telemetry.execute(
       [:agentsea, :crew, :task, :stop],
       %{system_time: System.system_time()},
-      %{crew: state.spec.name, task_id: task_id, outcome: outcome}
+      %{crew: data.spec.name, task_id: task_id, outcome: outcome}
+    )
+  end
+
+  defp emit_kickoff_stop(data, success) do
+    duration =
+      if data.kickoff_started, do: System.monotonic_time() - data.kickoff_started, else: 0
+
+    :telemetry.execute(
+      [:agentsea, :crew, :kickoff, :stop],
+      %{duration: duration},
+      %{crew: data.spec.name, success: success, task_count: map_size(data.tasks)}
     )
   end
 end
