@@ -25,6 +25,7 @@ defmodule AgentSea.MCP.MixProject do
     [
       {:agentsea_core, in_umbrella: true},
       {:jason, "~> 1.4"},
+      {:req, "~> 0.5"},
       {:mox, "~> 1.1", only: :test}
     ]
   end

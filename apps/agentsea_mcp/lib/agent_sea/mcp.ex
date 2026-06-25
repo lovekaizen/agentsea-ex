@@ -33,6 +33,19 @@ defmodule AgentSea.MCP do
   end
 
   @doc """
+  Connect to an MCP server over Streamable HTTP. `url` is the server endpoint;
+  `:headers` and `:adapter` are forwarded to the transport. Returns `{:ok, client}`.
+  """
+  @spec connect_http(String.t(), keyword()) :: {:ok, pid()} | {:error, term()}
+  def connect_http(url, opts \\ []) do
+    transport_opts = [url: url] ++ Keyword.take(opts, [:headers, :adapter])
+
+    with {:ok, transport} <- AgentSea.MCP.Transport.Http.start_link(transport_opts) do
+      connect({AgentSea.MCP.Transport.Http, transport}, Keyword.drop(opts, [:headers, :adapter]))
+    end
+  end
+
+  @doc """
   Adapt the server's tools into `AgentSea.Tool.Spec` values an agent can use.
   Each spec's `run` calls the tool through the client.
   """
