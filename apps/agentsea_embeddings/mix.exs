@@ -27,11 +27,12 @@ defmodule AgentSea.Embeddings.MixProject do
 
   defp deps do
     # The in-memory store + hashing embedder are dependency-free; core is needed
-    # for the retrieval tool, and postgrex/jason for the pgvector store. Bumblebee
-    # is a future drop-in embedder.
+    # for the retrieval tool, postgrex/jason for the pgvector store, and req for
+    # the Qdrant store. Bumblebee is a drop-in embedder (see agentsea_bumblebee).
     [
       {:agentsea_core, in_umbrella: true},
       {:postgrex, "~> 0.17"},
+      {:req, "~> 0.5"},
       {:jason, "~> 1.4"},
       {:mox, "~> 1.1", only: :test}
     ]
