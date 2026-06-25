@@ -25,7 +25,7 @@ An umbrella of independently-releasable `agentsea_*` apps (`core`, `providers`, 
 ## Roadmap
 
 1. **Core loop** ✅ — Agent GenServer + Provider/Tool/Memory behaviours + Anthropic provider (Req), buffer memory, concurrent + crash-isolated tool execution. (`agentsea_core`, `agentsea_providers`)
-2. **Crews** 🚧 — capabilities/roles, delegation strategies (round-robin, best-match, auction-as-fan-out) and bidding are done (`agentsea_crews`); supervision tree + `gen_statem` coordinator next.
+2. **Crews** ✅ — capabilities/roles, delegation strategies (round-robin, best-match, auction-as-fan-out), bidding, and a supervised coordinator that runs a task DAG (parallel where possible, dependency-aware) (`agentsea_crews`). Pause/resume/abort + `gen_statem` migration still to come.
 3. **Observability** — Phoenix LiveView + Telemetry (live fleet, token streaming, checkpoint replay).
 4. **Gateway** — Finch pools + `:fuse` + router + OpenAI-compatible endpoint.
 5. **Data plane** — Bumblebee embeddings, pgvector memory, Instructor structured output, Broadway ingest/evaluate.
