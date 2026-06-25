@@ -67,6 +67,39 @@ defmodule AgentSea.Gateway do
     try_candidates(candidates, gateway, messages, 0)
   end
 
+  @doc """
+  Route a streaming completion. Picks the first available provider (in strategy
+  order) that implements `c:AgentSea.Provider.stream/2` and returns its lazy
+  event stream. There is no mid-stream failover (a stream can't be replayed).
+
+  Returns `{:ok, stream, provider_name}` or an error.
+  """
+  @spec stream(GenServer.server(), [AgentSea.Provider.message()], keyword()) ::
+          {:ok, Enumerable.t(), term()} | {:error, term()}
+  def stream(gateway, messages, opts \\ []) do
+    ctx = %{exclude: Keyword.get(opts, :exclude, [])}
+
+    case GenServer.call(gateway, {:plan, ctx}) do
+      [] ->
+        {:error, :all_providers_unavailable}
+
+      candidates ->
+        case Enum.find(candidates, &streamable?/1) do
+          nil ->
+            {:error, :no_streaming_provider}
+
+          candidate ->
+            call_opts = Keyword.merge(candidate.opts || [], model: candidate.model)
+            {:ok, candidate.module.stream(messages, call_opts), candidate.name}
+        end
+    end
+  end
+
+  defp streamable?(candidate) do
+    Code.ensure_loaded?(candidate.module) and
+      function_exported?(candidate.module, :stream, 2)
+  end
+
   @doc "Current per-provider health (latency EMA + call/error counts)."
   def health(gateway), do: GenServer.call(gateway, :health)
 

@@ -5,10 +5,11 @@ defmodule AgentSea.Web.ChatController do
   Any OpenAI client can point its base URL at this endpoint. Requests are routed
   across the gateway's configured providers (strategy + failover + circuit
   breaking); responses are mapped back to the OpenAI shape. With `stream: true`
-  the response is delivered as Server-Sent Events.
+  the gateway's streaming path is used and each provider event is forwarded as an
+  OpenAI Server-Sent-Event chunk — real token streaming, not a post-hoc split.
 
   The gateway server is resolved from `config :agentsea_web, :gateway` (default
-  `AgentSea.Web.Gateway`) — start/register a gateway under that name.
+  `AgentSea.Web.Gateway`).
   """
 
   use Phoenix.Controller, formats: [:json]
@@ -17,28 +18,33 @@ defmodule AgentSea.Web.ChatController do
   def create(conn, params) do
     messages = decode_messages(params["messages"] || [])
     model = params["model"] || "agentsea"
-    stream? = params["stream"] == true
 
-    case AgentSea.Gateway.completion(gateway(), messages) do
-      {:ok, response, _served_by} ->
-        if stream?,
-          do: stream_completion(conn, model, response),
-          else: json(conn, completion_body(model, response))
-
-      {:error, reason} ->
-        conn
-        |> put_status(502)
-        |> json(%{
-          error: %{
-            message: "No provider available to handle the request.",
-            type: "gateway_error",
-            code: to_string(reason)
-          }
-        })
+    if params["stream"] == true do
+      case AgentSea.Gateway.stream(gateway(), messages) do
+        {:ok, stream, _served_by} -> stream_sse(conn, model, stream)
+        {:error, reason} -> gateway_error(conn, reason)
+      end
+    else
+      case AgentSea.Gateway.completion(gateway(), messages) do
+        {:ok, response, _served_by} -> json(conn, completion_body(model, response))
+        {:error, reason} -> gateway_error(conn, reason)
+      end
     end
   end
 
   defp gateway, do: Application.get_env(:agentsea_web, :gateway, AgentSea.Web.Gateway)
+
+  defp gateway_error(conn, reason) do
+    conn
+    |> put_status(502)
+    |> json(%{
+      error: %{
+        message: "No provider available to handle the request.",
+        type: "gateway_error",
+        code: to_string(reason)
+      }
+    })
+  end
 
   # --- Request decoding ---
 
@@ -72,9 +78,9 @@ defmodule AgentSea.Web.ChatController do
     }
   end
 
-  # --- Streaming (SSE) response ---
+  # --- Streaming (SSE) response: forward each provider event as a chunk ---
 
-  defp stream_completion(conn, model, response) do
+  defp stream_sse(conn, model, stream) do
     id = new_id()
     created = System.system_time(:second)
 
@@ -85,32 +91,20 @@ defmodule AgentSea.Web.ChatController do
       |> send_chunked(200)
 
     conn
-    # role delta
     |> send_event(chunk_body(id, created, model, %{role: "assistant"}, nil))
-    # content deltas (the gateway fronts non-streaming providers, so we split the
-    # completed text into word-sized deltas)
-    |> stream_content(response.content, fn delta, c ->
-      send_event(c, chunk_body(id, created, model, %{content: delta}, nil))
-    end)
-    # final delta + sentinel
-    |> send_event(chunk_body(id, created, model, %{}, finish_reason(response.stop_reason)))
+    |> forward_stream(stream, id, created, model)
+    |> send_event(chunk_body(id, created, model, %{}, "stop"))
     |> send_done()
   end
 
-  defp stream_content(conn, "", _fun), do: conn
+  defp forward_stream(conn, stream, id, created, model) do
+    Enum.reduce(stream, conn, fn
+      {:content, delta}, c ->
+        send_event(c, chunk_body(id, created, model, %{content: delta}, nil))
 
-  defp stream_content(conn, content, fun) do
-    content
-    |> word_deltas()
-    |> Enum.reduce(conn, fn delta, c -> fun.(delta, c) end)
-  end
-
-  defp word_deltas(content) do
-    content
-    |> String.split(" ")
-    |> Enum.with_index()
-    |> Enum.map(fn {word, 0} -> word
-      {word, _} -> " " <> word
+      # :done, thinking, tool_call, … aren't surfaced as OpenAI content deltas
+      _event, c ->
+        c
     end)
   end
 

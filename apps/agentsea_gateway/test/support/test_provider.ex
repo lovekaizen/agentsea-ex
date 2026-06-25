@@ -25,5 +25,12 @@ defmodule AgentSea.Gateway.TestProvider do
   end
 
   @impl true
+  def stream(_messages, opts) do
+    tag = opts[:tag] || "ok"
+
+    (tag |> String.split(" ", trim: true) |> Enum.map(&{:content, &1})) ++ [:done]
+  end
+
+  @impl true
   def model_info(_model), do: nil
 end

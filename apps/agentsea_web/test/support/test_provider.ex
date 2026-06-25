@@ -15,5 +15,10 @@ defmodule AgentSea.Web.TestProvider do
   end
 
   @impl true
+  def stream(_messages, _opts) do
+    (["Hello", "there", "friend"] |> Enum.map(&{:content, &1})) ++ [:done]
+  end
+
+  @impl true
   def model_info(_model), do: nil
 end

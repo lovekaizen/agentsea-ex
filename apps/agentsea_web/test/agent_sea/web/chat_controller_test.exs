@@ -70,9 +70,11 @@ defmodule AgentSea.Web.ChatControllerTest do
 
     body = conn.resp_body
     assert body =~ "chat.completion.chunk"
-    # Reassembled content deltas reconstruct the message.
-    assert body =~ "Hello"
-    assert body =~ "friend"
+    # Each provider stream event becomes its own delta chunk (real streaming).
+    assert body =~ ~s("content":"Hello")
+    assert body =~ ~s("content":"there")
+    assert body =~ ~s("content":"friend")
+    assert body =~ ~s("finish_reason":"stop")
     assert String.ends_with?(String.trim_trailing(body), "data: [DONE]")
   end
 
