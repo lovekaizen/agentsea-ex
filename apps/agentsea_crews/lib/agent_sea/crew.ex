@@ -54,6 +54,15 @@ defmodule AgentSea.Crew do
   @doc "Run the crew to completion; returns `{:ok, result}` with results & failures."
   defdelegate kickoff(crew), to: AgentSea.Crew.Coordinator
 
-  @doc "Current crew status: `:idle | :running | :completed`."
+  @doc "Current crew status: `:idle | :running | :paused | :completed | :aborted`."
   defdelegate status(crew), to: AgentSea.Crew.Coordinator
+
+  @doc "Pause dispatching (in-flight tasks finish). Only while `:running`."
+  defdelegate pause(crew), to: AgentSea.Crew.Coordinator
+
+  @doc "Resume dispatching after a pause. Only while `:paused`."
+  defdelegate resume(crew), to: AgentSea.Crew.Coordinator
+
+  @doc "Abort: cancel in-flight tasks; the kickoff caller gets `{:error, :aborted}`."
+  defdelegate abort(crew), to: AgentSea.Crew.Coordinator
 end

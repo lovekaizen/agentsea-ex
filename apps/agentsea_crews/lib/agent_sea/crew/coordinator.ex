@@ -8,8 +8,10 @@ defmodule AgentSea.Crew.Coordinator do
   whose dependencies failed are marked `:dependency_failed`. When everything is
   settled it replies to the kickoff caller with the aggregate result.
 
-  Lifecycle status: `:idle → :running → :completed`. (Pause/resume/abort and
-  checkpointing are planned — see the design doc.)
+  Lifecycle status: `:idle → :running → :completed`, with `pause/1`, `resume/1`,
+  and `abort/1` controls — `pause` stops dispatching new tasks (in-flight work
+  finishes), `resume` continues from where it left off, and `abort` cancels
+  in-flight tasks and settles the crew (`:running ⇄ :paused`, either `→ :aborted`).
   """
 
   use GenServer
@@ -27,6 +29,15 @@ defmodule AgentSea.Crew.Coordinator do
   def add_task(crew, attrs), do: GenServer.call(via(crew), {:add_task, attrs})
   def kickoff(crew, timeout \\ 60_000), do: GenServer.call(via(crew), :kickoff, timeout)
   def status(crew), do: GenServer.call(via(crew), :status)
+
+  @doc "Stop dispatching new tasks; in-flight tasks finish. Only valid while `:running`."
+  def pause(crew), do: GenServer.call(via(crew), :pause)
+
+  @doc "Resume dispatching after a pause. Only valid while `:paused`."
+  def resume(crew), do: GenServer.call(via(crew), :resume)
+
+  @doc "Cancel in-flight tasks and settle as `:aborted`; the kickoff caller gets `{:error, :aborted}`."
+  def abort(crew), do: GenServer.call(via(crew), :abort)
 
   defp via(crew), do: Supervisor.via(crew, :coordinator)
 
@@ -98,6 +109,49 @@ defmodule AgentSea.Crew.Coordinator do
 
   def handle_call(:status, _from, state), do: {:reply, state.status, state}
 
+  def handle_call(:pause, _from, %{status: :running} = state) do
+    {:reply, :ok, %{state | status: :paused}}
+  end
+
+  def handle_call(:pause, _from, state) do
+    {:reply, {:error, {:invalid_status, state.status}}, state}
+  end
+
+  def handle_call(:resume, _from, %{status: :paused} = state) do
+    state = dispatch_ready(%{state | status: :running})
+
+    if settled?(state) do
+      {:noreply, completed} = complete(state)
+      {:reply, :ok, completed}
+    else
+      {:reply, :ok, state}
+    end
+  end
+
+  def handle_call(:resume, _from, state) do
+    {:reply, {:error, {:invalid_status, state.status}}, state}
+  end
+
+  def handle_call(:abort, _from, %{status: status} = state) when status in [:running, :paused] do
+    task_sup = Supervisor.via(state.spec.name, :task_sup)
+
+    for pid <- Task.Supervisor.children(task_sup) do
+      Task.Supervisor.terminate_child(task_sup, pid)
+    end
+
+    # Drop the monitors (and any queued DOWNs) for the tasks we just killed.
+    for ref <- Map.keys(state.running), do: Process.demonitor(ref, [:flush])
+
+    emit_kickoff_stop(state, false)
+    if state.caller, do: GenServer.reply(state.caller, {:error, :aborted})
+
+    {:reply, :ok, %{state | status: :aborted, running: %{}, caller: nil}}
+  end
+
+  def handle_call(:abort, _from, state) do
+    {:reply, {:error, {:invalid_status, state.status}}, state}
+  end
+
   # A delegated task finished (Agent.run returned {:ok, _} | {:error, _}).
   @impl true
   def handle_info({ref, {:task_done, task_id, result}}, %{running: running} = state)
@@ -147,7 +201,7 @@ defmodule AgentSea.Crew.Coordinator do
     end
   end
 
-  defp dispatch_ready(state) do
+  defp dispatch_ready(%{status: :running} = state) do
     pending =
       for {id, task} <- state.tasks,
           not done?(state, id),
@@ -162,6 +216,9 @@ defmodule AgentSea.Crew.Coordinator do
       end
     end)
   end
+
+  # Paused/aborted/completed: don't dispatch new work.
+  defp dispatch_ready(state), do: state
 
   defp dispatch_one(state, task) do
     ctx = Map.put(state.spec.delegation_ctx, :counter, state.rr_counter)
@@ -200,17 +257,21 @@ defmodule AgentSea.Crew.Coordinator do
       failures: state.failures
     }
 
+    emit_kickoff_stop(state, result.success)
+
+    if state.caller, do: GenServer.reply(state.caller, {:ok, result})
+    {:noreply, %{state | status: :completed, caller: nil}}
+  end
+
+  defp emit_kickoff_stop(state, success) do
     duration =
       if state.kickoff_started, do: System.monotonic_time() - state.kickoff_started, else: 0
 
     :telemetry.execute(
       [:agentsea, :crew, :kickoff, :stop],
       %{duration: duration},
-      %{crew: state.spec.name, success: result.success, task_count: map_size(state.tasks)}
+      %{crew: state.spec.name, success: success, task_count: map_size(state.tasks)}
     )
-
-    if state.caller, do: GenServer.reply(state.caller, {:ok, result})
-    {:noreply, %{state | status: :completed, caller: nil}}
   end
 
   # --- Predicates / helpers ---
