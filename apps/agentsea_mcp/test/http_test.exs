@@ -36,7 +36,9 @@ defmodule AgentSea.MCP.Transport.HttpTest do
       {%{
          "jsonrpc" => "2.0",
          "id" => id,
-         "result" => %{"tools" => [%{"name" => "echo", "description" => "Echo", "inputSchema" => %{}}]}
+         "result" => %{
+           "tools" => [%{"name" => "echo", "description" => "Echo", "inputSchema" => %{}}]
+         }
        }, []}
 
   defp handle("tools/call", id),
@@ -54,7 +56,10 @@ defmodule AgentSea.MCP.Transport.HttpTest do
         start: {Http, :start_link, [[url: "https://example/mcp", adapter: adapter]]}
       })
 
-    start_supervised!(%{id: :client, start: {Client, :start_link, [[transport: {Http, transport}]]}})
+    start_supervised!(%{
+      id: :client,
+      start: {Client, :start_link, [[transport: {Http, transport}]]}
+    })
   end
 
   test "handshake over HTTP, captures + replays the session id, lists tools" do

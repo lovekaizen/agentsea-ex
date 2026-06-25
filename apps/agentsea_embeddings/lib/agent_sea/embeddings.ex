@@ -32,7 +32,11 @@ defmodule AgentSea.Embeddings do
           embed_opts: keyword()
         }
 
-  @type entry :: %{required(:id) => term(), required(:text) => String.t(), optional(:metadata) => map()}
+  @type entry :: %{
+          required(:id) => term(),
+          required(:text) => String.t(),
+          optional(:metadata) => map()
+        }
 
   @doc "Build a handle bundling a store + embedder."
   @spec new(keyword()) :: t()

@@ -123,7 +123,13 @@ defmodule AgentSea.Crew.Coordinator do
       when is_map_key(running, ref) do
     {task_id, running} = Map.pop(running, ref)
     emit_task_stop(state, task_id, :crashed)
-    state = %{state | failures: Map.put(state.failures, task_id, {:crashed, reason}), running: running}
+
+    state = %{
+      state
+      | failures: Map.put(state.failures, task_id, {:crashed, reason}),
+        running: running
+    }
+
     advance(state)
   end
 

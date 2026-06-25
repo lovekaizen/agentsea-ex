@@ -32,15 +32,15 @@ defmodule AgentSea.Crew.TelemetryTest do
 
     assert {:ok, %{success: true}} = Crew.kickoff(name)
 
-    assert_receive {[:agentsea, :crew, :kickoff, :start], ^ref, _meas, %{crew: ^name, task_count: 1}}
+    assert_receive {[:agentsea, :crew, :kickoff, :start], ^ref, _meas,
+                    %{crew: ^name, task_count: 1}}
 
     assert_receive {[:agentsea, :crew, :task, :start], ^ref, _meas,
                     %{crew: ^name, task_id: task_id, agent: :w}}
 
     assert task_id == task.id
 
-    assert_receive {[:agentsea, :crew, :task, :stop], ^ref, _meas,
-                    %{crew: ^name, outcome: :ok}}
+    assert_receive {[:agentsea, :crew, :task, :stop], ^ref, _meas, %{crew: ^name, outcome: :ok}}
 
     assert_receive {[:agentsea, :crew, :kickoff, :stop], ^ref, %{duration: _},
                     %{crew: ^name, success: true}}

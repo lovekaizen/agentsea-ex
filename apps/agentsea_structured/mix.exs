@@ -28,7 +28,7 @@ defmodule AgentSea.Structured.MixProject do
   defp deps do
     [
       {:agentsea_core, in_umbrella: true},
-# Pinned to the 3.12 line (decimal ~> 2.0) so it co-resolves with bumblebee,
+      # Pinned to the 3.12 line (decimal ~> 2.0) so it co-resolves with bumblebee,
       # whose progress_bar requires decimal ~> 2.0. Ecto 3.13+ moved to decimal 3.0.
       {:ecto, "~> 3.12.0"},
       {:jason, "~> 1.4"},

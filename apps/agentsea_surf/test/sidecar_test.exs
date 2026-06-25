@@ -38,7 +38,9 @@ defmodule AgentSea.Surf.SidecarTest do
     # Fire several in parallel; each must get its own correct response.
     results =
       1..10
-      |> Task.async_stream(fn i -> Surf.navigate(surf, "https://site/#{i}") end, max_concurrency: 10)
+      |> Task.async_stream(fn i -> Surf.navigate(surf, "https://site/#{i}") end,
+        max_concurrency: 10
+      )
       |> Enum.map(fn {:ok, {:ok, %{"url" => url}}} -> url end)
       |> Enum.sort()
 

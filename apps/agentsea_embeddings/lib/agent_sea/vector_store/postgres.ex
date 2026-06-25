@@ -72,7 +72,10 @@ defmodule AgentSea.VectorStore.Postgres do
   @impl true
   def query(%{conn: conn, table: table}, vector, k, opts) do
     literal = vector_literal(vector)
-    select = "SELECT id, text, metadata::text, 1 - (embedding <=> $1::vector) AS score FROM #{table}"
+
+    select =
+      "SELECT id, text, metadata::text, 1 - (embedding <=> $1::vector) AS score FROM #{table}"
+
     order = "ORDER BY embedding <=> $1::vector LIMIT"
 
     {sql, params} =
@@ -81,7 +84,8 @@ defmodule AgentSea.VectorStore.Postgres do
           {"#{select} #{order} $2", [literal, k]}
 
         where when is_map(where) ->
-          {"#{select} WHERE metadata @> $2::jsonb #{order} $3", [literal, Jason.encode!(where), k]}
+          {"#{select} WHERE metadata @> $2::jsonb #{order} $3",
+           [literal, Jason.encode!(where), k]}
       end
 
     %{rows: rows} = Postgrex.query!(conn, sql, params)
@@ -91,6 +95,7 @@ defmodule AgentSea.VectorStore.Postgres do
   @impl true
   def delete(%{conn: conn, table: table}, ids) do
     Postgrex.query!(conn, "DELETE FROM #{table} WHERE id = ANY($1)", [Enum.map(ids, &to_string/1)])
+
     :ok
   end
 

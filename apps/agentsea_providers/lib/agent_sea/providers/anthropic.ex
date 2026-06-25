@@ -136,7 +136,7 @@ defmodule AgentSea.Providers.Anthropic do
 
   defp split_system(messages) do
     {systems, rest} = Enum.split_with(messages, &(&1.role == :system))
-    system = systems |> Enum.map(& &1.content) |> Enum.join("\n\n")
+    system = Enum.map_join(systems, "\n\n", & &1.content)
     {if(system == "", do: nil, else: system), rest}
   end
 

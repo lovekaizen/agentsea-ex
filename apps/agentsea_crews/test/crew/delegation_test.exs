@@ -38,7 +38,8 @@ defmodule AgentSea.Crew.DelegationTest do
     end
 
     test "errors with no agents" do
-      assert {:error, :no_agents} = Delegation.select(RoundRobin, Task.new(description: "x"), [], %{})
+      assert {:error, :no_agents} =
+               Delegation.select(RoundRobin, Task.new(description: "x"), [], %{})
     end
   end
 
@@ -103,7 +104,8 @@ defmodule AgentSea.Crew.DelegationTest do
     end
 
     test "errors with no agents" do
-      assert {:error, :no_agents} = Delegation.select(Auction, Task.new(description: "x"), [], %{})
+      assert {:error, :no_agents} =
+               Delegation.select(Auction, Task.new(description: "x"), [], %{})
     end
   end
 end

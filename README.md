@@ -2,15 +2,7 @@
 
 An idiomatic Elixir/OTP rewrite of the [AgentSea](https://github.com/lovekaizen/agentsea) agentic ADK — **not** a port of the TypeScript SDK.
 
-> **Status: Phase 1 in progress.** The core loop is implemented and tested — see [docs/DESIGN.md](docs/DESIGN.md) for the full plan.
-
-## Getting started
-
-```bash
-asdf install            # Erlang/OTP 25 + Elixir 1.18 (see .tool-versions)
-mix deps.get
-mix test
-```
+> **Status: design complete.** All six phases are implemented and tested — 13 umbrella apps, 138 tests green (plus opt-in live integration tests for Postgres and Bumblebee). See [docs/DESIGN.md](docs/DESIGN.md) for the original plan.
 
 ## Thesis
 
@@ -18,18 +10,58 @@ A multi-agent framework where agents are supervised processes, delegation is mes
 
 Where OTP already solves it, we delete the abstraction and use the primitive. We keep AgentSea's *concepts* (Agent, Provider, Tool, Memory, Crew, Role, Capability, delegation strategy, Gateway, evaluation) and discard the TypeScript *shapes*.
 
-## Layout (planned)
+## Getting started
 
-An umbrella of independently-releasable `agentsea_*` apps (`core`, `providers`, `crews`, `gateway`, `memory`, `embeddings`, `structured`, `ingest`, `evaluate`, `mcp`, `guardrails`, `surf`, `web`). See [docs/DESIGN.md](docs/DESIGN.md).
+```bash
+asdf install     # Erlang/OTP 25 + Elixir 1.18 (see .tool-versions)
+mix deps.get
+mix test         # the default suite — no external services needed
+```
 
-## Roadmap
+Everything in the default suite runs offline: providers are stubbed via `Req` adapters, LLM behaviours via Mox, and the MCP/surf sidecars run real subprocesses (`awk`, `node`) that speak the wire protocol without a model or network.
 
-1. **Core loop** ✅ — Agent GenServer + Provider/Tool/Memory behaviours + Anthropic provider (Req) with non-streaming `complete/2` **and** real SSE `stream/2`, buffer memory, concurrent + crash-isolated tool execution. (`agentsea_core`, `agentsea_providers`)
-2. **Crews** ✅ — capabilities/roles, delegation strategies (round-robin, best-match, auction-as-fan-out), bidding, and a supervised coordinator that runs a task DAG (parallel where possible, dependency-aware) (`agentsea_crews`). Pause/resume/abort + `gen_statem` migration still to come.
-3. **Observability** ✅ — Telemetry instrumentation across provider/agent/tool/crew (`AgentSea.Telemetry`) plus a Phoenix LiveView dashboard (`agentsea_web`) that renders live fleet activity from those events.
-4. **Gateway** ✅ — strategy-based routing (failover, round-robin, cost-, latency-optimized), `:fuse` circuit breaking, failover, and health tracking (`agentsea_gateway`), plus an OpenAI-compatible `POST /v1/chat/completions` endpoint with **real token streaming** — provider `stream/2` events forwarded straight through as SSE chunks (`agentsea_web`).
-5. **Data plane** ✅ — Ecto-changeset structured output (`agentsea_structured`); an embeddings/vector-search stack with a RAG retrieval tool, an in-memory store, **and a pgvector store** (`agentsea_embeddings`); an in-process **Bumblebee/Nx HF-model embedder** (`agentsea_bumblebee`); a Broadway document ingestion pipeline (`agentsea_ingest`); and concurrent evaluation with exact-match/contains/LLM-as-judge metrics + aggregation (`agentsea_evaluate`).
-6. **Bridges** ✅ — an MCP client with **stdio and streamable-HTTP transports** (`agentsea_mcp`); a surf Node sidecar with browser actions as agent tools (`agentsea_surf`); and voice — `TTS`/`STT` behaviours + an OpenAI adapter over Req (`agentsea_voice`). Local (Bumblebee) adapters remain as refinements.
+## Architecture
+
+An umbrella of independently-releasable `agentsea_*` apps. Each owns one concern and depends only on what it needs; behaviours (not inheritance) are the seams between them.
+
+| App | Concern |
+|-----|---------|
+| `agentsea_core` | Agent `GenServer` + the run loop; `Provider`/`Tool`/`Memory`/`Tool.Spec` behaviours; capabilities, roles, bidding; `:telemetry` spans; buffer memory; crash-isolated concurrent tool execution |
+| `agentsea_providers` | Anthropic provider over `Req` — `complete/2` and real SSE `stream/2`; an SSE framer |
+| `agentsea_crews` | `DynamicSupervisor` + `Registry`; delegation strategies (round-robin, best-match, auction-as-fan-out); a coordinator that runs a task DAG, dependency-aware and parallel where possible |
+| `agentsea_gateway` | strategy routing (failover, round-robin, cost-/latency-optimized); `:fuse` circuit breaking; per-provider health; non-streaming and streaming routing |
+| `agentsea_web` | Phoenix LiveView fleet dashboard fed by telemetry + PubSub; OpenAI-compatible `POST /v1/chat/completions` with real token streaming |
+| `agentsea_structured` | Ecto-changeset structured extraction with validation-retry |
+| `agentsea_embeddings` | `Embedder`/`VectorStore` behaviours; hashing embedder + in-memory store; **pgvector** store; a RAG retrieval tool |
+| `agentsea_bumblebee` | in-process HF-model embedder via Bumblebee + Nx (no embedding API) |
+| `agentsea_ingest` | Broadway pipeline: chunk → embed → store, with batching/backpressure |
+| `agentsea_evaluate` | concurrent metrics (exact-match, contains, LLM-as-judge) + aggregation |
+| `agentsea_mcp` | MCP client with **stdio** and **streamable-HTTP** transports; server tools adapted into agent `Tool.Spec`s |
+| `agentsea_surf` | Node/Playwright browser sidecar over a `Port`, exposed as agent tools |
+| `agentsea_voice` | `TTS`/`STT` behaviours + an OpenAI adapter over `Req` |
+
+## Roadmap (all delivered)
+
+1. **Core loop** ✅ — agent GenServer, behaviours, Anthropic provider (`complete` + streaming), buffer memory, concurrent crash-isolated tools.
+2. **Crews** ✅ — capabilities/roles, delegation strategies, bidding, a supervised coordinator running a task DAG.
+3. **Observability** ✅ — telemetry across provider/agent/tool/crew + a live LiveView dashboard.
+4. **Gateway** ✅ — routing strategies, `:fuse` circuit breaking, failover, health, and an OpenAI-compatible streaming endpoint.
+5. **Data plane** ✅ — structured output, embeddings/RAG (in-memory + pgvector + Bumblebee), Broadway ingestion, evaluation.
+6. **Bridges** ✅ — MCP (stdio + HTTP), surf Node sidecar, voice.
+
+Future refinements (beyond the original scope): crew pause/resume/abort + `gen_statem`, an `:exla` backend for Bumblebee, ElevenLabs/local voice adapters.
+
+## Testing
+
+```bash
+mix test                          # default: offline, no external services
+mix test --include postgres       # + live pgvector (needs Postgres w/ the vector extension)
+mix test --include bumblebee      # + live HF model (downloads all-MiniLM-L6-v2, ~90MB)
+mix format --check-formatted
+mix compile --warnings-as-errors
+```
+
+Heavyweight or service-dependent tests are tagged and **excluded by default**, so the standard suite stays fast and hermetic; CI runs that suite plus the format and warnings-as-errors gates.
 
 ## License
 

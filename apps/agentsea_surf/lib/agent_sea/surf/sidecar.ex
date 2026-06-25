@@ -62,7 +62,9 @@ defmodule AgentSea.Surf.Sidecar do
   end
 
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
-    for {_id, from} <- state.pending, do: GenServer.reply(from, {:error, {:sidecar_exited, status}})
+    for {_id, from} <- state.pending,
+        do: GenServer.reply(from, {:error, {:sidecar_exited, status}})
+
     {:stop, :normal, %{state | pending: %{}}}
   end
 

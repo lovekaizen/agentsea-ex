@@ -47,9 +47,8 @@ defmodule AgentSea.Surf do
         description: "Open a URL in a browser and return the page's visible text.",
         schema: [url: [type: :string, required: true]],
         run: fn args, _ctx ->
-          with {:ok, _} <- navigate(server, arg(args, :url)),
-               {:ok, text} <- text(server) do
-            {:ok, text}
+          with {:ok, _} <- navigate(server, arg(args, :url)) do
+            text(server)
           end
         end
       },

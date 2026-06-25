@@ -31,7 +31,9 @@ defmodule AgentSea.MCP.Transport.StdioTest do
   end
 
   test "calls a tool over stdio (request/response correlated by id)", %{client: client} do
-    assert {:ok, "echo: hello stdio"} = Client.call_tool(client, "echo", %{"text" => "hello stdio"})
+    assert {:ok, "echo: hello stdio"} =
+             Client.call_tool(client, "echo", %{"text" => "hello stdio"})
+
     # A second call uses a fresh id and still correlates correctly.
     assert {:ok, "echo: again"} = Client.call_tool(client, "echo", %{"text" => "again"})
   end

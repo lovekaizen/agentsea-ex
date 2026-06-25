@@ -62,6 +62,10 @@ defmodule AgentSea.Crew.Delegation.Auction do
 
   defp pick([], _criteria), do: nil
   defp pick(bids, :confidence), do: Enum.max_by(bids, fn {_a, b} -> b.confidence end)
-  defp pick(bids, :fastest), do: Enum.min_by(bids, fn {_a, b} -> b.estimated_time || :infinity end)
-  defp pick(bids, :cheapest), do: Enum.min_by(bids, fn {_a, b} -> b.estimated_cost || :infinity end)
+
+  defp pick(bids, :fastest),
+    do: Enum.min_by(bids, fn {_a, b} -> b.estimated_time || :infinity end)
+
+  defp pick(bids, :cheapest),
+    do: Enum.min_by(bids, fn {_a, b} -> b.estimated_cost || :infinity end)
 end

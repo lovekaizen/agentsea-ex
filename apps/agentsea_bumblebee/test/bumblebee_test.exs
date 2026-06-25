@@ -52,7 +52,8 @@ defmodule AgentSea.Embedder.BumblebeeTest do
     serving = Embedder.serving()
 
     assert {:ok, [v1, v2, v3]} =
-             Embedder.embed(["a cat sat on the mat", "a feline rested on the rug", "stock market crash"],
+             Embedder.embed(
+               ["a cat sat on the mat", "a feline rested on the rug", "stock market crash"],
                serving: serving,
                normalize: true
              )

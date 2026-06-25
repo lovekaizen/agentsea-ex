@@ -9,13 +9,21 @@ defmodule AgentSea.MCP.ClientTest do
   defp server do
     fn
       "initialize", _params ->
-        {:ok, %{"protocolVersion" => "2024-11-05", "serverInfo" => %{"name" => "demo", "version" => "1.0"}}}
+        {:ok,
+         %{
+           "protocolVersion" => "2024-11-05",
+           "serverInfo" => %{"name" => "demo", "version" => "1.0"}
+         }}
 
       "tools/list", _params ->
         {:ok,
          %{
            "tools" => [
-             %{"name" => "echo", "description" => "Echo text", "inputSchema" => %{"type" => "object"}},
+             %{
+               "name" => "echo",
+               "description" => "Echo text",
+               "inputSchema" => %{"type" => "object"}
+             },
              %{"name" => "boom", "description" => "Always errors", "inputSchema" => %{}}
            ]
          }}

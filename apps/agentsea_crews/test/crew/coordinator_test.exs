@@ -32,7 +32,9 @@ defmodule AgentSea.Crew.CoordinatorTest do
 
   test "runs a single task and returns the agent's output" do
     crew = start_crew([agent_config(:worker, [cap("coding")])])
-    {:ok, task} = Crew.add_task(crew, description: "write code", required_capabilities: ["coding"])
+
+    {:ok, task} =
+      Crew.add_task(crew, description: "write code", required_capabilities: ["coding"])
 
     assert {:ok, result} = Crew.kickoff(crew)
     assert result.success
@@ -102,7 +104,8 @@ defmodule AgentSea.Crew.CoordinatorTest do
         agent_config(:writer, [cap("writing")])
       ])
 
-    {:ok, task} = Crew.add_task(crew, description: "ship a feature", required_capabilities: ["coding"])
+    {:ok, task} =
+      Crew.add_task(crew, description: "ship a feature", required_capabilities: ["coding"])
 
     assert {:ok, result} = Crew.kickoff(crew)
     # The coder handled it (echoed output proves the task ran end-to-end).

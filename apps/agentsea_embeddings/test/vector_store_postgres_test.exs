@@ -22,7 +22,10 @@ defmodule AgentSea.VectorStore.PostgresTest do
       assert store == %{conn: :fake_conn, table: "vecs", dimensions: 8}
 
       assert_raise KeyError, fn -> Postgres.store(:fake_conn, table: "vecs") end
-      assert_raise ArgumentError, fn -> Postgres.store(:fake_conn, table: "bad name", dimensions: 8) end
+
+      assert_raise ArgumentError, fn ->
+        Postgres.store(:fake_conn, table: "bad name", dimensions: 8)
+      end
     end
 
     test "implements the AgentSea.VectorStore callbacks" do

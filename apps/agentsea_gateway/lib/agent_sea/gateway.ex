@@ -115,9 +115,10 @@ defmodule AgentSea.Gateway do
   @impl true
   def handle_call({:plan, ctx}, _from, state) do
     available =
-      state.config.providers
-      |> Enum.reject(&(&1.name in ctx.exclude))
-      |> Enum.reject(&(CircuitBreaker.ask(&1.name) == :blown))
+      Enum.reject(
+        state.config.providers,
+        &(&1.name in ctx.exclude or CircuitBreaker.ask(&1.name) == :blown)
+      )
 
     ordered =
       state.config.strategy.order(available, %{

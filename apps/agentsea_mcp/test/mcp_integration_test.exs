@@ -15,10 +15,16 @@ defmodule AgentSea.MCP.IntegrationTest do
 
   defp weather_server do
     fn
-      "initialize", _ -> {:ok, %{"serverInfo" => %{"name" => "weather"}}}
+      "initialize", _ ->
+        {:ok, %{"serverInfo" => %{"name" => "weather"}}}
+
       "tools/list", _ ->
         {:ok,
-         %{"tools" => [%{"name" => "get_weather", "description" => "Current weather", "inputSchema" => %{}}]}}
+         %{
+           "tools" => [
+             %{"name" => "get_weather", "description" => "Current weather", "inputSchema" => %{}}
+           ]
+         }}
 
       "tools/call", %{"name" => "get_weather", "arguments" => %{"city" => city}} ->
         {:ok, %{"content" => [%{"type" => "text", "text" => "It is sunny in #{city}."}]}}

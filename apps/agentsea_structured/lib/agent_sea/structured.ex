@@ -67,27 +67,46 @@ defmodule AgentSea.Structured do
   defp loop(schema, messages, provider_mod, call_opts, max_retries, attempt) do
     case provider_mod.complete(messages, call_opts) do
       {:ok, response} ->
-        case parse_and_validate(schema, response.content) do
-          {:ok, struct} ->
-            {:ok, struct}
-
-          {:error, reason, hint} ->
-            if attempt < max_retries do
-              retry =
-                messages ++
-                  [
-                    %{role: :assistant, content: response.content},
-                    %{role: :user, content: hint}
-                  ]
-
-              loop(schema, retry, provider_mod, call_opts, max_retries, attempt + 1)
-            else
-              {:error, reason}
-            end
-        end
+        validate_or_retry(
+          schema,
+          messages,
+          provider_mod,
+          call_opts,
+          max_retries,
+          attempt,
+          response
+        )
 
       {:error, reason} ->
         {:error, reason}
+    end
+  end
+
+  defp validate_or_retry(
+         schema,
+         messages,
+         provider_mod,
+         call_opts,
+         max_retries,
+         attempt,
+         response
+       ) do
+    case parse_and_validate(schema, response.content) do
+      {:ok, struct} ->
+        {:ok, struct}
+
+      {:error, reason, _hint} when attempt >= max_retries ->
+        {:error, reason}
+
+      {:error, _reason, hint} ->
+        retry =
+          messages ++
+            [
+              %{role: :assistant, content: response.content},
+              %{role: :user, content: hint}
+            ]
+
+        loop(schema, retry, provider_mod, call_opts, max_retries, attempt + 1)
     end
   end
 
@@ -102,7 +121,8 @@ defmodule AgentSea.Structured do
   defp user_messages(messages) when is_list(messages), do: messages
 
   defp instructions(schema, extra) do
-    fields = Enum.map_join(field_specs(schema), "\n", fn {name, type} -> "  - #{name}: #{type}" end)
+    fields =
+      Enum.map_join(field_specs(schema), "\n", fn {name, type} -> "  - #{name}: #{type}" end)
 
     base = """
     You are a precise data-extraction assistant. Extract the requested

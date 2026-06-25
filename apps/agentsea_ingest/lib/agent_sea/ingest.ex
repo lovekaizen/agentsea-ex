@@ -10,7 +10,11 @@ defmodule AgentSea.Ingest do
 
   alias AgentSea.Ingest.Chunker
 
-  @type document :: %{required(:id) => term(), required(:text) => String.t(), optional(:metadata) => map()}
+  @type document :: %{
+          required(:id) => term(),
+          required(:text) => String.t(),
+          optional(:metadata) => map()
+        }
   @type chunk :: %{id: String.t(), text: String.t(), metadata: map()}
 
   @spec chunk_documents([document()], keyword()) :: [chunk()]

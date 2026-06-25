@@ -74,7 +74,9 @@ defmodule AgentSea.MCP.Transport.Stdio do
 
   def handle_info({port, {:exit_status, status}}, %{port: port} = state) do
     # Fail any in-flight requests so callers don't hang.
-    for {_id, from} <- state.pending, do: GenServer.reply(from, {:error, {:server_exited, status}})
+    for {_id, from} <- state.pending,
+        do: GenServer.reply(from, {:error, {:server_exited, status}})
+
     {:stop, :normal, %{state | pending: %{}}}
   end
 
