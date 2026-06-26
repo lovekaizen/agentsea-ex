@@ -1,6 +1,6 @@
 # AgentSea (Elixir)
 
-An idiomatic Elixir/OTP rewrite of the [AgentSea](https://github.com/lovekaizen/agentsea) agentic ADK — **not** a port of the TypeScript SDK.
+An idiomatic Elixir/OTP rewrite of the [AgentSea](https://github.com/lovekaizen/agentsea) agentic ADK.
 
 > **Status: design complete.** All six phases are implemented and tested — 13 umbrella apps, 138 tests green (plus opt-in live integration tests for Postgres and Bumblebee). See [docs/DESIGN.md](docs/DESIGN.md) for the original plan.
 

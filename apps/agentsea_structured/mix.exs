@@ -8,7 +8,6 @@ defmodule AgentSea.Structured.MixProject do
       app: :agentsea_structured,
       version: "0.1.0",
       build_path: "../../_build",
-      config_path: "../../config/config.exs",
       deps_path: "../../deps",
       lockfile: "../../mix.lock",
       elixir: "~> 1.14",
@@ -22,7 +21,16 @@ defmodule AgentSea.Structured.MixProject do
         links: %{"GitHub" => "https://github.com/lovekaizen/agentsea-ex"}
       ],
       deps: deps()
-    ]
+    ] ++ shared_config()
+  end
+
+  # Use the umbrella's shared config when present; otherwise omit config_path
+  # so Mix falls back to its default (a missing config is skipped). Keeps
+  # per-app builds (e.g. `mix hex.build`) from hard-failing if the root
+  # config/config.exs is absent.
+  defp shared_config do
+    path = "../../config/config.exs"
+    if File.exists?(Path.expand(path, __DIR__)), do: [config_path: path], else: []
   end
 
   def application do
