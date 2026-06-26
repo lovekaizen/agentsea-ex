@@ -65,4 +65,12 @@ jobs:
         #   mix test --include bumblebee  (downloads a Hugging Face model)
 
       - name: Dialyzer
-        run: mix dialyzer
+        # Run in :dev — dialyxir is a :dev dependency, and dev's elixirc_paths
+        # exclude test/support (intentionally-raising test helpers) from the PLT
+        # analysis. Needs its own deps.get since the job-level MIX_ENV=test step
+        # doesn't fetch :dev-only deps.
+        env:
+          MIX_ENV: dev
+        run: |
+          mix deps.get
+          mix dialyzer
