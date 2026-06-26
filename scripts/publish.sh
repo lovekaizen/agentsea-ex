@@ -41,6 +41,22 @@ APPS=(
 
 export HEX_PUBLISH=1
 
+# Publishing compiles each app with HEX_PUBLISH=1, where sibling deps are Hex
+# version requirements — so each app's already-published siblings must be
+# fetched from Hex first (`mix deps.get`). That touches the shared mix.lock and
+# pulls agentsea_* into deps/; restore the umbrella's local state on exit.
+if [ "$DRY_RUN" -eq 0 ]; then
+  LOCK_BACKUP="$(mktemp)"
+  cp mix.lock "$LOCK_BACKUP"
+  cleanup() {
+    cp "$LOCK_BACKUP" mix.lock 2>/dev/null || true
+    rm -f "$LOCK_BACKUP"
+    rm -rf deps/agentsea_* 2>/dev/null || true
+    echo "Restored mix.lock; run \`mix deps.get\` to refetch umbrella deps locally."
+  }
+  trap cleanup EXIT
+fi
+
 for app in "${APPS[@]}"; do
   echo
   if [ "$DRY_RUN" -eq 1 ]; then
@@ -49,7 +65,8 @@ for app in "${APPS[@]}"; do
     rm -f "apps/$app"/*.tar
   else
     echo "==> publishing $app"
-    ( cd "apps/$app" && mix hex.publish $PUBLISH_FLAGS )
+    # deps.get fetches the published siblings so the app compiles for publish.
+    ( cd "apps/$app" && mix deps.get && mix hex.publish $PUBLISH_FLAGS )
   fi
 done
 

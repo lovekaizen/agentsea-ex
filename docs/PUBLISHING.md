@@ -78,12 +78,19 @@ after which you must bump the version. `--replace` is harmless for apps that
 aren't published yet, so `scripts/publish.sh --replace --yes` cleanly finishes a
 partial run (re-pushing the ones already up and publishing the rest).
 
-To do a single app by hand instead:
+Because publishing *compiles* each app under `HEX_PUBLISH=1` (where siblings are
+Hex deps), the script runs `mix deps.get` first to pull each app's already-
+published siblings from Hex, then restores `mix.lock` and removes the fetched
+`deps/agentsea_*` on exit so your umbrella dev state stays local. Run
+`mix deps.get` afterwards to refetch locally.
+
+To do a single app by hand instead, fetch its siblings first:
 
 ```bash
 cd apps/agentsea_core
-HEX_PUBLISH=1 mix hex.publish            # package + docs
-HEX_PUBLISH=1 mix hex.publish package    # package only (no docs)
+HEX_PUBLISH=1 mix deps.get                # fetch published siblings (no-op for core)
+HEX_PUBLISH=1 mix hex.publish             # package + docs
+HEX_PUBLISH=1 mix hex.publish package     # package only (no docs)
 ```
 
 ## 5. Docs on HexDocs
